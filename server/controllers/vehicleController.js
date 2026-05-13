@@ -148,10 +148,23 @@ const deleteVehicle = async (req, res) => {
   }
 };
 
+// @desc    Get owner's vehicles
+// @route   GET /api/vehicles/owner
+// @access  Private/Owner
+const getOwnerVehicles = async (req, res) => {
+  try {
+    const vehicles = await Vehicle.find({ owner: req.user._id }).sort({ createdAt: -1 });
+    res.json(vehicles);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   addVehicle,
   getVehicles,
   getVehicleById,
   updateVehicle,
   deleteVehicle,
+  getOwnerVehicles,
 };

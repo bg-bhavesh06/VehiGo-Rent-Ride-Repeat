@@ -30,13 +30,11 @@ const OwnerDashboard = () => {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       
       const [vehiclesRes, bookingsRes] = await Promise.all([
-        axios.get('/api/vehicles', config), // I'll filter by owner on the frontend or we can add an endpoint
+        axios.get('/api/vehicles/owner', config),
         axios.get('/api/bookings/owner', config)
       ]);
       
-      // Filter vehicles for this owner
-      const myVehicles = vehiclesRes.data.filter(v => v.owner._id === user._id);
-      setVehicles(myVehicles);
+      setVehicles(vehiclesRes.data);
       setBookings(bookingsRes.data);
     } catch (error) {
       console.error(error);

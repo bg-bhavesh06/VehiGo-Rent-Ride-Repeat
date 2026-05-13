@@ -22,7 +22,7 @@ const createOrder = async (req, res) => {
     }
 
     const options = {
-      amount: amount * 100, // amount in smallest currency unit (paise)
+      amount: Math.round(amount * 100), // amount in smallest currency unit (paise)
       currency: 'INR',
       receipt: `receipt_order_${bookingId}`,
     };

@@ -6,7 +6,7 @@ dist/
 dist-ssr/
 
 # Environment and secrets
-!.env.example
+.env
 
 # Logs
 logs/

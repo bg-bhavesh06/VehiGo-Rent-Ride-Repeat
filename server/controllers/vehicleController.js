@@ -63,7 +63,7 @@ const getVehicles = async (req, res) => {
   try {
     const { type, location, brand, maxPrice, minPrice } = req.query;
     
-    let query = { availabilityStatus: true };
+    let query = {};
 
     if (type) query.type = new RegExp(type, 'i');
     if (location) query.location = new RegExp(location, 'i');

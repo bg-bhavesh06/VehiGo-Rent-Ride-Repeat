@@ -21,7 +21,7 @@ const Register = () => {
     
     const res = await register({ name, email, password, role });
     if (res.success) {
-      navigate(role === 'Owner' ? '/dashboard/owner' : '/dashboard/user');
+      navigate(role === 'Owner' ? '/dashboard/owner' : '/vehicles');
     } else {
       setError(res.message);
     }

@@ -82,6 +82,28 @@ const OwnerDashboard = () => {
     }
   };
 
+  const handleDeleteVehicle = async (id) => {
+    if (window.confirm('Are you sure you want to delete this vehicle?')) {
+      try {
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        await axios.delete(`/api/vehicles/${id}`, config);
+        fetchData();
+      } catch (error) {
+        alert(error.response?.data?.message || 'Error deleting vehicle');
+      }
+    }
+  };
+
+  const handleToggleAvailability = async (id, currentStatus) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.put(`/api/vehicles/${id}`, { availabilityStatus: !currentStatus }, config);
+      fetchData();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error updating vehicle');
+    }
+  };
+
   if (loading) return <div className="flex justify-center items-center h-[80vh]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>;
 
   return (
@@ -154,38 +176,44 @@ const OwnerDashboard = () => {
                 <h2 className="text-2xl font-bold text-gray-900">My Vehicles</h2>
                 <button onClick={() => setActiveTab('add_vehicle')} className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">Add New</button>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100 text-sm text-gray-500">
-                      <th className="p-4 font-medium">Vehicle</th>
-                      <th className="p-4 font-medium">Type</th>
-                      <th className="p-4 font-medium">Price/Day</th>
-                      <th className="p-4 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vehicles.map(v => (
-                      <tr key={v._id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="p-4 flex items-center gap-3">
-                          <img src={v.images[0] || 'https://via.placeholder.com/50'} alt={v.name} className="w-12 h-12 rounded-lg object-cover" />
-                          <span className="font-bold text-gray-900">{v.name}</span>
-                        </td>
-                        <td className="p-4 text-gray-600">{v.type}</td>
-                        <td className="p-4 font-medium text-gray-900">₹{v.pricePerDay}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 rounded-md text-xs font-bold ${v.availabilityStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {v.availabilityStatus ? 'Available' : 'Unavailable'}
+              {vehicles.length === 0 ? (
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
+                  No vehicles listed yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {vehicles.map(v => (
+                    <div key={v._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition hover:shadow-md">
+                      <div className="h-48 overflow-hidden relative">
+                        <img src={v.images[0] || 'https://via.placeholder.com/300x200'} alt={v.name} className="w-full h-full object-cover transition-transform hover:scale-105" />
+                        <div className="absolute top-3 right-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${v.availabilityStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {v.availabilityStatus ? 'Available' : 'Booked'}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {vehicles.length === 0 && (
-                      <tr><td colSpan="4" className="p-8 text-center text-gray-500">No vehicles listed yet.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                      </div>
+                      <div className="p-5 flex flex-col flex-grow">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-bold text-lg text-gray-900 truncate pr-2">{v.name}</h3>
+                          <span className="font-bold text-primary-600">₹{v.pricePerDay}<span className="text-xs text-gray-500 font-normal">/day</span></span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">{v.brand} • {v.type}</p>
+                        <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">{v.vehicleNumber}</span>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleToggleAvailability(v._id, v.availabilityStatus)} className={`px-2 py-1.5 rounded-md text-xs font-medium transition ${v.availabilityStatus ? 'bg-orange-50 text-orange-600 hover:bg-orange-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                              Mark {v.availabilityStatus ? 'Unavailable' : 'Available'}
+                            </button>
+                            <button onClick={() => handleDeleteVehicle(v._id)} className="px-2 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-medium transition">
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

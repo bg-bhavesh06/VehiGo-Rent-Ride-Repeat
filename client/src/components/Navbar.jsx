@@ -24,9 +24,11 @@ const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-6">
-            <Link to="/vehicles" className="text-gray-700 hover:text-primary-600 font-medium transition">
-              Browse Vehicles
-            </Link>
+            {user?.role !== 'Owner' && (
+              <Link to="/vehicles" className="text-gray-700 hover:text-primary-600 font-medium transition">
+                Browse Vehicles
+              </Link>
+            )}
             
             {user ? (
               <div className="flex items-center gap-4">

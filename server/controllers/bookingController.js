@@ -48,6 +48,9 @@ const createBooking = async (req, res) => {
       documents: documentUrls,
     });
 
+    vehicle.availabilityStatus = false;
+    await vehicle.save();
+
     res.status(201).json(booking);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -101,6 +104,12 @@ const cancelBooking = async (req, res) => {
     booking.bookingStatus = 'Cancelled';
     await booking.save();
 
+    const vehicle = await Vehicle.findById(booking.vehicle);
+    if (vehicle) {
+      vehicle.availabilityStatus = true;
+      await vehicle.save();
+    }
+
     res.json({ message: 'Booking cancelled successfully', booking });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -124,10 +133,15 @@ const updateBookingStatus = async (req, res) => {
     }
 
     booking.bookingStatus = status;
-    
-    // If completed, maybe free up vehicle, etc.
-
     await booking.save();
+
+    if (status === 'Completed' || status === 'Cancelled') {
+      const vehicle = await Vehicle.findById(booking.vehicle);
+      if (vehicle) {
+        vehicle.availabilityStatus = true;
+        await vehicle.save();
+      }
+    }
 
     res.json(booking);
   } catch (error) {

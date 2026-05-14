@@ -20,7 +20,7 @@ const uploadToCloudinary = (fileBuffer) => {
 // @access  Private/Owner
 const addVehicle = async (req, res) => {
   try {
-    const { name, brand, type, model, vehicleNumber, fuelType, seatingCapacity, pricePerDay, location, description } = req.body;
+    const { name, brand, type, model, vehicleNumber, fuelType, seatingCapacity, pricePerHour, location, description } = req.body;
 
     const vehicleExists = await Vehicle.findOne({ vehicleNumber });
     if (vehicleExists) {
@@ -43,7 +43,7 @@ const addVehicle = async (req, res) => {
       vehicleNumber,
       fuelType,
       seatingCapacity,
-      pricePerDay,
+      pricePerHour,
       location,
       description,
       images: imageUrls,
@@ -69,12 +69,27 @@ const getVehicles = async (req, res) => {
     if (location) query.location = new RegExp(location, 'i');
     if (brand) query.brand = new RegExp(brand, 'i');
     if (minPrice || maxPrice) {
-      query.pricePerDay = {};
-      if (minPrice) query.pricePerDay.$gte = Number(minPrice);
-      if (maxPrice) query.pricePerDay.$lte = Number(maxPrice);
+      query.pricePerHour = {};
+      if (minPrice) query.pricePerHour.$gte = Number(minPrice);
+      if (maxPrice) query.pricePerHour.$lte = Number(maxPrice);
     }
 
-    const vehicles = await Vehicle.find(query).populate('owner', 'name email');
+    const vehicles = await Vehicle.find(query).populate('owner', 'name email').lean();
+    
+    const Booking = require('../models/Booking');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let vehicle of vehicles) {
+      const activeBookings = await Booking.find({
+        vehicle: vehicle._id,
+        bookingStatus: { $in: ['Pending', 'Confirmed'] },
+        returnDate: { $gte: today }
+      }).select('pickupDate returnDate').sort({ pickupDate: 1 });
+      
+      vehicle.activeBookings = activeBookings;
+    }
+
     res.json(vehicles);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -153,7 +168,22 @@ const deleteVehicle = async (req, res) => {
 // @access  Private/Owner
 const getOwnerVehicles = async (req, res) => {
   try {
-    const vehicles = await Vehicle.find({ owner: req.user._id }).sort({ createdAt: -1 });
+    const vehicles = await Vehicle.find({ owner: req.user._id }).sort({ createdAt: -1 }).lean();
+    
+    const Booking = require('../models/Booking');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let vehicle of vehicles) {
+      const activeBookings = await Booking.find({
+        vehicle: vehicle._id,
+        bookingStatus: { $in: ['Pending', 'Confirmed'] },
+        returnDate: { $gte: today }
+      }).select('pickupDate returnDate').sort({ pickupDate: 1 });
+      
+      vehicle.activeBookings = activeBookings;
+    }
+
     res.json(vehicles);
   } catch (error) {
     res.status(500).json({ message: error.message });

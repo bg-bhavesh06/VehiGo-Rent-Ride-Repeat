@@ -8,14 +8,14 @@ const vehicleSchema = new mongoose.Schema({
   vehicleNumber: { type: String, required: true, unique: true },
   fuelType: { type: String, required: true },
   seatingCapacity: { type: Number, required: true },
-  pricePerDay: { type: Number, required: true },
+  pricePerHour: { type: Number, required: true },
   location: { type: String, required: true },
   description: { type: String },
   availabilityStatus: { type: Boolean, default: true },
   images: [{ type: String }], // Cloudinary URLs
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Owner',
     required: true,
   },
 }, { timestamps: true });

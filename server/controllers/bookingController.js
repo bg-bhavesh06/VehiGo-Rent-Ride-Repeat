@@ -14,8 +14,57 @@ const createBooking = async (req, res) => {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
 
-    if (!vehicle.availabilityStatus) {
-      return res.status(400).json({ message: 'Vehicle is currently unavailable' });
+    const newStart = new Date(pickupDate);
+    const newEnd = new Date(returnDate);
+
+    // Fetch all existing active bookings for this vehicle
+    const existingBookings = await Booking.find({
+      vehicle: vehicleId,
+      bookingStatus: { $in: ['Pending', 'Confirmed'] }
+    }).sort({ pickupDate: 1 });
+
+    let conflict = false;
+    let conflictBooking = null;
+
+    for (let b of existingBookings) {
+      const bStart = new Date(b.pickupDate);
+      const bEnd = new Date(b.returnDate);
+
+      // ONLY ALLOW BOOKING IF:
+      // - New end date is BEFORE or exactly AT booked start date
+      // OR
+      // - New start date is AFTER or exactly AT booked end date
+      const isSafe = (newEnd <= bStart) || (newStart >= bEnd);
+      
+      if (!isSafe) {
+        conflict = true;
+        conflictBooking = b;
+        break;
+      }
+    }
+
+    if (conflict) {
+      const cStart = new Date(conflictBooking.pickupDate);
+      const cEnd = new Date(conflictBooking.returnDate);
+      
+      const beforeDate = new Date(cStart);
+      beforeDate.setDate(beforeDate.getDate() - 1);
+      
+      const afterDate = new Date(cEnd);
+      afterDate.setDate(afterDate.getDate() + 1);
+
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      
+      return res.status(409).json({
+        message: 'Conflict',
+        conflictDetails: {
+          conflictStart: cStart,
+          conflictEnd: cEnd,
+          availableBefore: beforeDate,
+          availableAfter: afterDate,
+          smartMessage: `Sorry! This vehicle is already booked from ${cStart.toLocaleDateString('en-US', options)} to ${cEnd.toLocaleDateString('en-US', options)}.\n\nYou can book:\n✅ Before conflict — upto ${beforeDate.toLocaleDateString('en-US', options)}\n✅ After conflict — from ${afterDate.toLocaleDateString('en-US', options)} onwards`
+        }
+      });
     }
 
     let documentUrls = [];
@@ -41,15 +90,12 @@ const createBooking = async (req, res) => {
       user: req.user._id,
       vehicle: vehicleId,
       owner: vehicle.owner,
-      pickupDate,
-      returnDate,
+      pickupDate: newStart,
+      returnDate: newEnd,
       totalAmount,
       remainingAmount,
       documents: documentUrls,
     });
-
-    vehicle.availabilityStatus = false;
-    await vehicle.save();
 
     res.status(201).json(booking);
   } catch (error) {
@@ -104,12 +150,6 @@ const cancelBooking = async (req, res) => {
     booking.bookingStatus = 'Cancelled';
     await booking.save();
 
-    const vehicle = await Vehicle.findById(booking.vehicle);
-    if (vehicle) {
-      vehicle.availabilityStatus = true;
-      await vehicle.save();
-    }
-
     res.json({ message: 'Booking cancelled successfully', booking });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -135,15 +175,24 @@ const updateBookingStatus = async (req, res) => {
     booking.bookingStatus = status;
     await booking.save();
 
-    if (status === 'Completed' || status === 'Cancelled') {
-      const vehicle = await Vehicle.findById(booking.vehicle);
-      if (vehicle) {
-        vehicle.availabilityStatus = true;
-        await vehicle.save();
-      }
-    }
-
     res.json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get booked dates for a vehicle
+// @route   GET /api/bookings/vehicle/:vehicleId/dates
+// @access  Public
+const getVehicleBookedDates = async (req, res) => {
+  try {
+    const { vehicleId } = req.params;
+    const bookings = await Booking.find({
+      vehicle: vehicleId,
+      bookingStatus: { $in: ['Pending', 'Confirmed'] }
+    }).select('pickupDate returnDate -_id');
+    
+    res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -155,4 +204,5 @@ module.exports = {
   getOwnerBookings,
   cancelBooking,
   updateBookingStatus,
+  getVehicleBookedDates,
 };

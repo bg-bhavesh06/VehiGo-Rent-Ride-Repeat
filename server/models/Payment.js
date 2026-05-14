@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const paymentSchema = new mongoose.Schema({
   booking: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'Owner', required: true },
   razorpayOrderId: { type: String, required: true },
   razorpayPaymentId: { type: String },
   razorpaySignature: { type: String },

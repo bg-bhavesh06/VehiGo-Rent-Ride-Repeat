@@ -15,7 +15,7 @@ const OwnerDashboard = () => {
   // Add Vehicle Form State
   const [formData, setFormData] = useState({
     name: '', brand: '', type: 'Car', model: '', vehicleNumber: '', 
-    fuelType: 'Petrol', seatingCapacity: '', pricePerDay: '', location: '', description: ''
+    fuelType: 'Petrol', seatingCapacity: '', pricePerHour: '', location: '', description: ''
   });
   const [images, setImages] = useState([]);
   const [addLoading, setAddLoading] = useState(false);
@@ -63,7 +63,7 @@ const OwnerDashboard = () => {
       // Reset form
       setFormData({
         name: '', brand: '', type: 'Car', model: '', vehicleNumber: '', 
-        fuelType: 'Petrol', seatingCapacity: '', pricePerDay: '', location: '', description: ''
+        fuelType: 'Petrol', seatingCapacity: '', pricePerHour: '', location: '', description: ''
       });
       setImages([]);
     } catch (error) {
@@ -188,16 +188,35 @@ const OwnerDashboard = () => {
                         <img src={v.images[0] || 'https://via.placeholder.com/300x200'} alt={v.name} className="w-full h-full object-cover transition-transform hover:scale-105" />
                         <div className="absolute top-3 right-3">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${v.availabilityStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {v.availabilityStatus ? 'Available' : 'Booked'}
+                            {v.availabilityStatus ? 'Available' : 'Unavailable'}
                           </span>
                         </div>
                       </div>
                       <div className="p-5 flex flex-col flex-grow">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-bold text-lg text-gray-900 truncate pr-2">{v.name}</h3>
-                          <span className="font-bold text-primary-600">₹{v.pricePerDay}<span className="text-xs text-gray-500 font-normal">/day</span></span>
+                          <span className="font-bold text-primary-600">₹{v.pricePerHour}<span className="text-xs text-gray-500 font-normal">/hr</span></span>
                         </div>
                         <p className="text-sm text-gray-600 mb-4">{v.brand} • {v.type}</p>
+                        {v.activeBookings && v.activeBookings.length > 0 && (
+                          <div className="mb-4 relative">
+                            <details className="group">
+                              <summary className="text-xs font-bold text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-100 cursor-pointer list-none flex justify-between items-center outline-none">
+                                <span>Booked Dates ({v.activeBookings.length})</span>
+                                <span className="text-orange-500 group-open:rotate-180 transition-transform text-[10px]">▼</span>
+                              </summary>
+                              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white border border-gray-200 shadow-xl rounded-xl p-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                <div className="flex flex-col gap-1">
+                                  {v.activeBookings.map((b, i) => (
+                                    <div key={i} className="text-xs font-medium text-orange-700 bg-orange-50 px-2 py-1.5 rounded">
+                                      {new Date(b.pickupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} to {new Date(b.returnDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </details>
+                          </div>
+                        )}
                         <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
                           <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">{v.vehicleNumber}</span>
                           <div className="flex gap-2">
@@ -259,8 +278,8 @@ const OwnerDashboard = () => {
                     <input required type="number" name="seatingCapacity" value={formData.seatingCapacity} onChange={handleInputChange} className="w-full p-3 rounded-xl border border-gray-200" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Price Per Day (₹)</label>
-                    <input required type="number" name="pricePerDay" value={formData.pricePerDay} onChange={handleInputChange} className="w-full p-3 rounded-xl border border-gray-200" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price Per Hour (₹)</label>
+                    <input required type="number" name="pricePerHour" value={formData.pricePerHour} onChange={handleInputChange} className="w-full p-3 rounded-xl border border-gray-200" />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>

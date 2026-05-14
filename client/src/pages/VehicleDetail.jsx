@@ -2,7 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { MapPin, Settings, User, CheckCircle, Upload, Calendar } from 'lucide-react';
+import { MapPin, Settings, User, CheckCircle, XCircle, Upload, Calendar } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const VehicleDetail = () => {
   const { id } = useParams();
@@ -13,8 +15,9 @@ const VehicleDetail = () => {
   const [loading, setLoading] = useState(true);
   
   // Booking Form State
-  const [pickupDate, setPickupDate] = useState('');
-  const [returnDate, setReturnDate] = useState('');
+  const [pickupDate, setPickupDate] = useState(null);
+  const [returnDate, setReturnDate] = useState(null);
+  const [bookedIntervals, setBookedIntervals] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,16 +32,51 @@ const VehicleDetail = () => {
       }
       setLoading(false);
     };
+
+    const fetchBookings = async () => {
+      try {
+        const { data } = await axios.get(`/api/bookings/vehicle/${id}/dates`);
+        const intervals = data.map(b => ({
+          start: new Date(b.pickupDate),
+          end: new Date(b.returnDate)
+        }));
+        setBookedIntervals(intervals);
+      } catch (err) {
+        console.error('Error fetching booked dates', err);
+      }
+    };
+
     fetchVehicle();
+    fetchBookings();
   }, [id]);
+
+  const isDateBlocked = (date) => {
+    if (vehicle && !vehicle.availabilityStatus) return true;
+    return bookedIntervals.some(interval => {
+      const d = new Date(date).setHours(0,0,0,0);
+      const s = new Date(interval.start).setHours(0,0,0,0);
+      const e = new Date(interval.end).setHours(0,0,0,0);
+      return d >= s && d <= e;
+    });
+  };
+
+  const getDayClassName = (date) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if (date < today) return "text-gray-300";
+    return isDateBlocked(date) 
+      ? "bg-red-100 text-red-600 font-bold !cursor-not-allowed" 
+      : "bg-green-100 text-green-700 font-bold hover:bg-green-200";
+  };
 
   const calculateTotalAmount = () => {
     if (!pickupDate || !returnDate || !vehicle) return 0;
     const start = new Date(pickupDate);
     const end = new Date(returnDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // at least 1 day
-    return diffDays * vehicle.pricePerDay;
+    const diffTime = end - start;
+    if (diffTime <= 0) return 0;
+    const diffHours = Math.ceil(diffTime / (1000 * 60 * 60)); // round up to nearest hour
+    return diffHours * vehicle.pricePerHour;
   };
 
   const handleBooking = async (e) => {
@@ -75,7 +113,11 @@ const VehicleDetail = () => {
       navigate('/dashboard/user');
       
     } catch (err) {
-      setError(err.response?.data?.message || 'Error creating booking');
+      if (err.response?.status === 409 && err.response?.data?.conflictDetails) {
+        alert("Booking Conflict!\n\n" + err.response.data.conflictDetails.smartMessage);
+      } else {
+        alert(err.response?.data?.message || 'Error creating booking');
+      }
     }
     setBookingLoading(false);
   };
@@ -112,8 +154,8 @@ const VehicleDetail = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-black text-primary-600">₹{vehicle.pricePerDay}</p>
-                <p className="text-gray-500 text-sm">per day</p>
+                <p className="text-3xl font-black text-primary-600">₹{vehicle.pricePerHour}</p>
+                <p className="text-gray-500 text-sm">per hour</p>
               </div>
             </div>
 
@@ -134,9 +176,13 @@ const VehicleDetail = () => {
                 <p className="font-semibold text-gray-900">{vehicle.fuelType}</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-2" />
+                {vehicle.availabilityStatus ? (
+                  <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-2" />
+                ) : (
+                  <XCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
+                )}
                 <p className="text-sm text-gray-500">Status</p>
-                <p className="font-semibold text-gray-900">{vehicle.availabilityStatus ? 'Available' : 'Booked'}</p>
+                <p className="font-semibold text-gray-900">{vehicle.availabilityStatus ? 'Available' : 'Unavailable'}</p>
               </div>
             </div>
 
@@ -171,7 +217,7 @@ const VehicleDetail = () => {
             )}
 
             {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
+              <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm whitespace-pre-wrap">
                 {error}
               </div>
             )}
@@ -180,14 +226,23 @@ const VehicleDetail = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Date</label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input 
-                    type="date" 
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+                  <DatePicker
+                    selected={pickupDate}
+                    onChange={(date) => setPickupDate(date)}
+                    selectsStart
+                    startDate={pickupDate}
+                    endDate={returnDate}
+                    minDate={new Date()}
+                    excludeDateIntervals={vehicle && !vehicle.availabilityStatus ? [{start: new Date('1970-01-01'), end: new Date('2100-01-01')}] : bookedIntervals}
+                    dayClassName={getDayClassName}
+                    className="w-full pl-10 p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500"
+                    placeholderText="Select pickup date and time"
+                    showTimeSelect
+                    timeFormat="hh:mm aa"
+                    timeIntervals={30}
+                    dateFormat="MMM d, yyyy h:mm aa"
                     required
-                    min={new Date().toISOString().split('T')[0]}
-                    value={pickupDate}
-                    onChange={(e) => setPickupDate(e.target.value)}
-                    className="w-full pl-10 p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500" 
                   />
                 </div>
               </div>
@@ -195,14 +250,23 @@ const VehicleDetail = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Return Date</label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input 
-                    type="date" 
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+                  <DatePicker
+                    selected={returnDate}
+                    onChange={(date) => setReturnDate(date)}
+                    selectsEnd
+                    startDate={pickupDate}
+                    endDate={returnDate}
+                    minDate={pickupDate || new Date()}
+                    excludeDateIntervals={vehicle && !vehicle.availabilityStatus ? [{start: new Date('1970-01-01'), end: new Date('2100-01-01')}] : bookedIntervals}
+                    dayClassName={getDayClassName}
+                    className="w-full pl-10 p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500"
+                    placeholderText="Select return date and time"
+                    showTimeSelect
+                    timeFormat="hh:mm aa"
+                    timeIntervals={30}
+                    dateFormat="MMM d, yyyy h:mm aa"
                     required
-                    min={pickupDate || new Date().toISOString().split('T')[0]}
-                    value={returnDate}
-                    onChange={(e) => setReturnDate(e.target.value)}
-                    className="w-full pl-10 p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500" 
                   />
                 </div>
               </div>
@@ -225,8 +289,8 @@ const VehicleDetail = () => {
 
               <div className="bg-gray-50 p-4 rounded-xl mt-6">
                 <div className="flex justify-between text-gray-600 mb-2">
-                  <span>Price per day</span>
-                  <span>₹{vehicle.pricePerDay}</span>
+                  <span>Price per hour</span>
+                  <span>₹{vehicle.pricePerHour}</span>
                 </div>
                 {totalAmount > 0 && (
                   <div className="flex justify-between font-bold text-lg text-gray-900 border-t border-gray-200 pt-2 mt-2">

@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Owner = require('../models/Owner');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -16,7 +17,9 @@ const registerUser = async (req, res) => {
   const { name, email, password, role } = req.body;
 
   try {
-    const userExists = await User.findOne({ email });
+    const Model = role === 'Owner' ? Owner : User;
+
+    const userExists = await Model.findOne({ email });
 
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
@@ -25,7 +28,7 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = await User.create({
+    const user = await Model.create({
       name,
       email,
       password: hashedPassword,
@@ -55,7 +58,13 @@ const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    let user = await User.findOne({ email });
+    let isOwner = false;
+    
+    if (!user) {
+      user = await Owner.findOne({ email });
+      isOwner = !!user;
+    }
 
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
@@ -79,7 +88,11 @@ const loginUser = async (req, res) => {
 // @access  Private
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
+    let user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      user = await Owner.findById(req.user._id).select('-password');
+    }
+
     if (user) {
       res.json(user);
     } else {
@@ -95,7 +108,10 @@ const getUserProfile = async (req, res) => {
 // @access  Private
 const updateUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    let user = await User.findById(req.user._id);
+    if (!user) {
+      user = await Owner.findById(req.user._id);
+    }
 
     if (user) {
       user.name = req.body.name || user.name;

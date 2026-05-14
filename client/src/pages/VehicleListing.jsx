@@ -115,11 +115,11 @@ const VehicleListing = () => {
                     )}
                     <div className="absolute top-3 left-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${vehicle.availabilityStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {vehicle.availabilityStatus ? 'Available' : 'Booked'}
+                        {vehicle.availabilityStatus ? 'Available' : 'Unavailable'}
                       </span>
                     </div>
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-gray-900 shadow-sm">
-                      ₹{vehicle.pricePerDay} <span className="text-gray-500 text-xs font-normal">/day</span>
+                      ₹{vehicle.pricePerHour} <span className="text-gray-500 text-xs font-normal">/hr</span>
                     </div>
                   </div>
                   
@@ -130,6 +130,26 @@ const VehicleListing = () => {
                     </div>
                     
                     <p className="text-gray-500 text-sm mb-4 line-clamp-2">{vehicle.description || `${vehicle.brand} ${vehicle.model}`}</p>
+                    
+                    {vehicle.activeBookings && vehicle.activeBookings.length > 0 && (
+                      <div className="mb-4 relative">
+                        <details className="group">
+                          <summary className="text-xs font-bold text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-100 cursor-pointer list-none flex justify-between items-center outline-none">
+                            <span>Booked Dates ({vehicle.activeBookings.length})</span>
+                            <span className="text-orange-500 group-open:rotate-180 transition-transform text-[10px]">▼</span>
+                          </summary>
+                          <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white border border-gray-200 shadow-xl rounded-xl p-2 max-h-32 overflow-y-auto custom-scrollbar">
+                            <div className="flex flex-col gap-1">
+                              {vehicle.activeBookings.map((b, i) => (
+                                <div key={i} className="text-xs font-medium text-orange-700 bg-orange-50 px-2 py-1.5 rounded">
+                                  {new Date(b.pickupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} to {new Date(b.returnDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-y-2 mb-6">
                       <div className="flex items-center text-sm text-gray-600 gap-1.5">

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 // Connect Database
@@ -46,7 +47,7 @@ app.use(cors());
 app.use(express.json());
 
 // Basic Route
-app.get('/', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.send('API is running...');
 });
 
@@ -56,6 +57,13 @@ app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/chats', require('./routes/chatRoutes'));
+
+// Serve React frontend in production
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
 
 const PORT = process.env.PORT || 5000;
 

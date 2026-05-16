@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, AlertCircle, ArrowRight, User } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -75,16 +75,16 @@ const Login = () => {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email or Contact Number</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   required
                   className="appearance-none rounded-xl relative block w-full pl-10 px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                  placeholder="you@example.com"
+                  placeholder="Email or Phone Number"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

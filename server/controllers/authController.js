@@ -14,7 +14,7 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, contactNumber } = req.body;
 
   try {
     const Model = role === 'Owner' ? Owner : User;
@@ -32,6 +32,7 @@ const registerUser = async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      contactNumber,
       role: role || 'User',
     });
 
@@ -58,11 +59,15 @@ const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ 
+      $or: [{ email: email }, { contactNumber: email }] 
+    });
     let isOwner = false;
     
     if (!user) {
-      user = await Owner.findOne({ email });
+      user = await Owner.findOne({ 
+        $or: [{ email: email }, { contactNumber: email }] 
+      });
       isOwner = !!user;
     }
 

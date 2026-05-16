@@ -1,11 +1,12 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Mail, Lock, User, Briefcase, AlertCircle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, AlertCircle, ArrowRight, Phone } from 'lucide-react';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('User');
   const [error, setError] = useState('');
@@ -19,7 +20,7 @@ const Register = () => {
     setError('');
     setIsLoading(true);
     
-    const res = await register({ name, email, password, role });
+    const res = await register({ name, email, contactNumber, password, role });
     if (res.success) {
       navigate(role === 'Owner' ? '/dashboard/owner' : '/vehicles');
     } else {
@@ -108,6 +109,23 @@ const Register = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="tel"
+                  required
+                  className="appearance-none rounded-xl relative block w-full pl-10 px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
+                  placeholder="+91 9876543210"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
                 />
               </div>
             </div>

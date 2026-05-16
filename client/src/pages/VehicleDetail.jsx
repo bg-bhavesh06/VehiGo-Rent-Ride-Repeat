@@ -2,9 +2,10 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { MapPin, Settings, User, CheckCircle, XCircle, Upload, Calendar } from 'lucide-react';
+import { MapPin, Settings, User, CheckCircle, XCircle, Upload, Calendar, MessageCircle, Send, X } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { io } from 'socket.io-client';
 
 const VehicleDetail = () => {
   const { id } = useParams();
@@ -21,6 +22,14 @@ const VehicleDetail = () => {
   const [documents, setDocuments] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Chat State
+  const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatRoom, setChatRoom] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     const fetchVehicle = async () => {
@@ -49,6 +58,68 @@ const VehicleDetail = () => {
     fetchVehicle();
     fetchBookings();
   }, [id]);
+
+  useEffect(() => {
+    if (user && isChatOpen && chatRoom) {
+      const newSocket = io();
+      setSocket(newSocket);
+      
+      newSocket.emit('join_room', chatRoom._id);
+      
+      newSocket.on('receive_message', (data) => {
+        setMessages((prev) => [...prev, data]);
+      });
+
+      return () => newSocket.disconnect();
+    }
+  }, [user, isChatOpen, chatRoom]);
+
+  const handleStartChat = async () => {
+    if (!user) {
+      setShowLoginPopup(true);
+      return;
+    }
+    
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data: room } = await axios.post('/api/chats/room', {
+        vehicleId: vehicle._id,
+        ownerId: vehicle.owner._id,
+        isBooked: false // simplified for now
+      }, config);
+      
+      setChatRoom(room);
+      setIsChatOpen(true);
+      
+      // Fetch previous messages
+      const { data: pastMessages } = await axios.get(`/api/chats/room/${room._id}/messages`, config);
+      setMessages(pastMessages);
+    } catch (err) {
+      console.error('Error starting chat', err);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !socket || !chatRoom) return;
+
+    const messageData = {
+      chatroomId: chatRoom._id,
+      receiverId: vehicle.owner._id,
+      messageText: newMessage
+    };
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data: savedMessage } = await axios.post('/api/chats/message', messageData, config);
+      
+      socket.emit('send_message', { ...savedMessage, roomId: chatRoom._id });
+      setMessages((prev) => [...prev, savedMessage]);
+      setNewMessage('');
+    } catch (err) {
+      console.error('Error sending message', err);
+    }
+  };
 
   const isDateBlocked = (date) => {
     if (vehicle && !vehicle.availabilityStatus) return true;
@@ -186,6 +257,17 @@ const VehicleDetail = () => {
               </div>
             </div>
 
+            {/* Chat Button */}
+            <div className="mb-8 border-t border-gray-100 pt-6">
+              <button 
+                onClick={handleStartChat}
+                className="flex items-center justify-center gap-2 w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-bold transition shadow-md"
+              >
+                <MessageCircle className="h-5 w-5" />
+                Chat with Owner
+              </button>
+            </div>
+
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Description</h3>
               <p className="text-gray-600 leading-relaxed">
@@ -313,6 +395,79 @@ const VehicleDetail = () => {
         </div>
 
       </div>
+
+      {/* Login Popup */}
+      {showLoginPopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
+            <div className="mx-auto w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+              <MessageCircle className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Login Required</h3>
+            <p className="text-gray-500 mb-6">Please Login or Register to chat with the owner.</p>
+            <div className="flex gap-3">
+              <button onClick={() => navigate('/login')} className="flex-1 bg-primary-600 text-white font-bold py-2 rounded-xl hover:bg-primary-700 transition">Login</button>
+              <button onClick={() => navigate('/register')} className="flex-1 bg-gray-100 text-gray-700 font-bold py-2 rounded-xl hover:bg-gray-200 transition">Register</button>
+            </div>
+            <button onClick={() => setShowLoginPopup(false)} className="mt-4 text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Card Popup */}
+      {isChatOpen && (
+        <div className="fixed bottom-4 right-4 md:bottom-10 md:right-10 w-[300px] h-[400px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-200 flex flex-col z-[100] overflow-hidden">
+          {/* Header */}
+          <div className="bg-blue-600 p-3 flex justify-between items-center text-white">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center font-bold text-sm">
+                {vehicle?.owner?.name?.charAt(0) || 'O'}
+              </div>
+              <div>
+                <p className="font-bold text-sm leading-tight truncate max-w-[150px]">{vehicle?.owner?.name}</p>
+                <p className="text-[10px] text-blue-200">Owner</p>
+              </div>
+            </div>
+            <button onClick={() => setIsChatOpen(false)} className="text-blue-200 hover:text-white transition">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          {/* Messages Area */}
+          <div className="flex-1 p-3 overflow-y-auto bg-gray-50 flex flex-col gap-2 custom-scrollbar">
+            {messages.length === 0 ? (
+              <p className="text-xs text-center text-gray-400 mt-auto mb-auto">Start chatting with {vehicle?.owner?.name}</p>
+            ) : (
+              messages.map((msg, idx) => {
+                const isMine = msg.senderId === user?._id;
+                return (
+                  <div key={idx} className={`max-w-[85%] p-2.5 rounded-2xl text-sm ${isMine ? 'bg-blue-600 text-white self-end rounded-tr-none' : 'bg-white border border-gray-100 text-gray-800 self-start rounded-tl-none shadow-sm'}`}>
+                    <p>{msg.messageText}</p>
+                    <p className={`text-[9px] mt-1 text-right ${isMine ? 'text-blue-200' : 'text-gray-400'}`}>
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          
+          {/* Input Area */}
+          <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-100 flex gap-2">
+            <input 
+              type="text" 
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type message..." 
+              className="flex-1 bg-gray-100 rounded-full px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button type="submit" disabled={!newMessage.trim()} className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center disabled:opacity-50 hover:bg-blue-700 transition flex-shrink-0">
+              <Send className="h-4 w-4 -ml-0.5" />
+            </button>
+          </form>
+        </div>
+      )}
+
     </div>
   );
 };

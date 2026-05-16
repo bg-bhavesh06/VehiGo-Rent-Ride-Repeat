@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
+import OwnerChat from '../components/OwnerChat';
 
 const OwnerDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -133,6 +134,9 @@ const OwnerDashboard = () => {
               </button>
               <button onClick={() => setActiveTab('bookings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'bookings' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <Calendar className="h-5 w-5" /> Bookings
+              </button>
+              <button onClick={() => setActiveTab('chats')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'chats' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <MessageCircle className="h-5 w-5" /> Chats
               </button>
             </nav>
           </div>
@@ -351,6 +355,13 @@ const OwnerDashboard = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'chats' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900">Chats</h2>
+              <OwnerChat />
             </div>
           )}
 

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { io } from 'socket.io-client';
-import { Search, Info, X, Send, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Info, X, Send, ArrowLeft, MessageCircle } from 'lucide-react';
 
-const OwnerChat = ({ onUnreadChange }) => {
+const UserChat = ({ onUnreadChange }) => {
   const { user } = useContext(AuthContext);
   const [chatRooms, setChatRooms] = useState([]);
   const [activeTab, setActiveTab] = useState('booked'); // 'booked' or 'unbooked'
@@ -25,14 +25,13 @@ const OwnerChat = ({ onUnreadChange }) => {
     const newSocket = io();
     setSocket(newSocket);
     
-    // Join personal room to receive all messages addressed to the owner
+    // Join personal room to receive all messages addressed to the user
     if (user && user._id) {
       newSocket.emit('join_user_room', user._id);
     }
     
     newSocket.on('receive_message', (data) => {
       setMessages((prev) => {
-        // Use activeChatRef.current to avoid closure trapping null
         if (data.roomId === activeChatRef.current?._id) {
           axios.put(`/api/chats/room/${data.roomId}/read`, {}, { headers: { Authorization: `Bearer ${user.token}` } })
             .then(() => fetchChats())
@@ -45,7 +44,7 @@ const OwnerChat = ({ onUnreadChange }) => {
     });
 
     return () => newSocket.disconnect();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (socket && activeChat) {
@@ -61,7 +60,7 @@ const OwnerChat = ({ onUnreadChange }) => {
   const fetchChats = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      const { data } = await axios.get('/api/chats/owner', config);
+      const { data } = await axios.get('/api/chats/user', config);
       setChatRooms(data);
       if (onUnreadChange) onUnreadChange();
     } catch (err) {
@@ -86,7 +85,7 @@ const OwnerChat = ({ onUnreadChange }) => {
 
     const messageData = {
       chatroomId: activeChat._id,
-      receiverId: activeChat.userId, // Sending to user
+      receiverId: activeChat.ownerId._id, // Sending to owner
       messageText: newMessage
     };
 
@@ -107,8 +106,8 @@ const OwnerChat = ({ onUnreadChange }) => {
   const unbookedChats = chatRooms.filter(c => !c.isBooked);
   const currentList = activeTab === 'booked' ? bookedChats : unbookedChats;
 
-  const totalBookedUnread = bookedChats.reduce((acc, curr) => acc + curr.unreadCount, 0);
-  const totalUnbookedUnread = unbookedChats.reduce((acc, curr) => acc + curr.unreadCount, 0);
+  const totalBookedUnread = bookedChats.reduce((acc, curr) => acc + curr.userUnreadCount, 0);
+  const totalUnbookedUnread = unbookedChats.reduce((acc, curr) => acc + curr.userUnreadCount, 0);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-[600px] flex overflow-hidden">
@@ -146,17 +145,17 @@ const OwnerChat = ({ onUnreadChange }) => {
                 className={`flex items-center gap-3 p-4 cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition ${activeChat?._id === chat._id ? 'bg-primary-50' : ''}`}
               >
                 <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold flex-shrink-0">
-                  {chat.userName.charAt(0)}
+                  {chat.ownerId?.name?.charAt(0) || 'O'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
-                    <h4 className="font-bold text-gray-900 truncate">{chat.userName}</h4>
+                    <h4 className="font-bold text-gray-900 truncate">{chat.ownerId?.name || 'Owner'}</h4>
                     <span className="text-[10px] text-gray-400">{new Date(chat.lastMessageTime).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-xs text-gray-500 truncate pr-2">{chat.lastMessage || 'Started a chat'}</p>
-                    {chat.unreadCount > 0 && (
-                      <span className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">{chat.unreadCount}</span>
+                    {chat.userUnreadCount > 0 && (
+                      <span className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">{chat.userUnreadCount}</span>
                     )}
                   </div>
                   <p className="text-[10px] text-primary-600 mt-1 font-medium truncate">{chat.vehicleId?.name}</p>
@@ -184,10 +183,10 @@ const OwnerChat = ({ onUnreadChange }) => {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold">
-                  {activeChat.userName.charAt(0)}
+                  {activeChat.ownerId?.name?.charAt(0) || 'O'}
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900">{activeChat.userName}</h3>
+                  <h3 className="font-bold text-gray-900">{activeChat.ownerId?.name || 'Owner'}</h3>
                   <p className="text-xs text-gray-500">{activeChat.vehicleId?.name}</p>
                 </div>
               </div>
@@ -200,7 +199,7 @@ const OwnerChat = ({ onUnreadChange }) => {
             </div>
 
             {/* Chat Messages */}
-            <div className="flex-1 p-6 overflow-y-auto bg-gray-50 flex flex-col gap-4">
+            <div className="flex-1 p-6 overflow-y-auto bg-gray-50 flex flex-col gap-4 custom-scrollbar">
               {messages.map((msg, idx) => {
                 const isMine = msg.senderId === user?._id;
                 return (
@@ -235,22 +234,21 @@ const OwnerChat = ({ onUnreadChange }) => {
                 <button onClick={() => setShowUserInfo(false)} className="text-gray-400 hover:text-gray-600">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h3 className="font-bold text-gray-900">User Details</h3>
+                <h3 className="font-bold text-gray-900">Owner Details</h3>
               </div>
               
               <div className="p-6 flex flex-col items-center border-b border-gray-50">
                 <div className="w-20 h-20 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-2xl mb-4">
-                  {activeChat.userName.charAt(0)}
+                  {activeChat.ownerId?.name?.charAt(0) || 'O'}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">{activeChat.userName}</h3>
-                <p className="text-sm text-gray-500">Member</p>
+                <h3 className="text-xl font-bold text-gray-900">{activeChat.ownerId?.name || 'Owner'}</h3>
+                <p className="text-sm text-gray-500">Vehicle Owner</p>
               </div>
 
               <div className="p-6 space-y-4">
                 <div>
                   <p className="text-xs text-gray-400 font-bold uppercase mb-1">Contact Info</p>
-                  <p className="text-sm text-gray-900 font-medium">📱 {activeChat.userContact}</p>
-                  <p className="text-sm text-gray-900 font-medium">📧 {activeChat.userEmail}</p>
+                  <p className="text-sm text-gray-900 font-medium">📧 {activeChat.ownerId?.email}</p>
                 </div>
                 
                 <div className="pt-4 border-t border-gray-50">
@@ -279,4 +277,4 @@ const OwnerChat = ({ onUnreadChange }) => {
   );
 };
 
-export default OwnerChat;
+export default UserChat;

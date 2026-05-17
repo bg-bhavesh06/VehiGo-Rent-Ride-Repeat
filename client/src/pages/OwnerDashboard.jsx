@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import OwnerChat from '../components/OwnerChat';
+import { io } from 'socket.io-client';
 
 const OwnerDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -20,9 +21,32 @@ const OwnerDashboard = () => {
   });
   const [images, setImages] = useState([]);
   const [addLoading, setAddLoading] = useState(false);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      if (!user?.token) return;
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.get('/api/chats/owner', config);
+      const total = data.reduce((acc, curr) => acc + curr.unreadCount, 0);
+      setTotalUnreadCount(total);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchData();
+    fetchUnreadCount();
+    
+    const newSocket = io();
+    if (user && user._id) {
+      newSocket.emit('join_user_room', user._id);
+    }
+    newSocket.on('receive_message', () => {
+      fetchUnreadCount();
+    });
+    return () => newSocket.disconnect();
   }, []);
 
   const fetchData = async () => {
@@ -136,7 +160,15 @@ const OwnerDashboard = () => {
                 <Calendar className="h-5 w-5" /> Bookings
               </button>
               <button onClick={() => setActiveTab('chats')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'chats' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                <MessageCircle className="h-5 w-5" /> Chats
+                <div className="relative flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5" />
+                  {totalUnreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] flex items-center justify-center rounded-full px-1 shadow-sm border border-white">
+                      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                    </span>
+                  )}
+                </div>
+                Chats
               </button>
             </nav>
           </div>
@@ -360,8 +392,8 @@ const OwnerDashboard = () => {
 
           {activeTab === 'chats' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Chats</h2>
-              <OwnerChat />
+              <h2 className="text-2xl font-bold text-gray-900">Owner Chats</h2>
+              <OwnerChat onUnreadChange={fetchUnreadCount} />
             </div>
           )}
 

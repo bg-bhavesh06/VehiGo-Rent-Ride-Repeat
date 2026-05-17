@@ -1,16 +1,41 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { User, Calendar, CreditCard, XCircle, CheckCircle, Clock } from 'lucide-react';
+import { User, Calendar, CreditCard, XCircle, CheckCircle, Clock, MessageCircle } from 'lucide-react';
+import UserChat from '../components/UserChat';
+import { io } from 'socket.io-client';
 
 const UserDashboard = () => {
   const { user } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      if (!user?.token) return;
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.get('/api/chats/user', config);
+      const total = data.reduce((acc, curr) => acc + curr.userUnreadCount, 0);
+      setTotalUnreadCount(total);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchBookings();
+    fetchUnreadCount();
+    
+    const newSocket = io();
+    if (user && user._id) {
+      newSocket.emit('join_user_room', user._id);
+    }
+    newSocket.on('receive_message', () => {
+      fetchUnreadCount();
+    });
+    return () => newSocket.disconnect();
   }, []);
 
   const fetchBookings = async () => {
@@ -128,6 +153,17 @@ const UserDashboard = () => {
               <button onClick={() => setActiveTab('bookings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'bookings' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <Calendar className="h-5 w-5" /> My Bookings
               </button>
+              <button onClick={() => setActiveTab('chats')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'chats' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <div className="relative flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5" />
+                  {totalUnreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] flex items-center justify-center rounded-full px-1 shadow-sm border border-white">
+                      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                    </span>
+                  )}
+                </div>
+                Chats
+              </button>
               <button onClick={() => setActiveTab('profile')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'profile' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <User className="h-5 w-5" /> Profile
               </button>
@@ -236,6 +272,13 @@ const UserDashboard = () => {
                 </div>
                 {/* Future implementation: Update profile logic */}
               </form>
+            </div>
+          )}
+
+          {activeTab === 'chats' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900">Chats</h2>
+              <UserChat onUnreadChange={fetchUnreadCount} />
             </div>
           )}
 

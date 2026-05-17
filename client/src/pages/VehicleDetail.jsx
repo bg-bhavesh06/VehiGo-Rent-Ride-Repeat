@@ -444,7 +444,7 @@ const VehicleDetail = () => {
                   <div key={idx} className={`max-w-[85%] p-2.5 rounded-2xl text-sm ${isMine ? 'bg-blue-600 text-white self-end rounded-tr-none' : 'bg-white border border-gray-100 text-gray-800 self-start rounded-tl-none shadow-sm'}`}>
                     <p>{msg.messageText}</p>
                     <p className={`text-[9px] mt-1 text-right ${isMine ? 'text-blue-200' : 'text-gray-400'}`}>
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(msg.createdAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 );

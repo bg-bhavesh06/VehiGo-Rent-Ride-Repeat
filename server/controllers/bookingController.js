@@ -20,7 +20,7 @@ const createBooking = async (req, res) => {
     // Fetch all existing active bookings for this vehicle
     const existingBookings = await Booking.find({
       vehicle: vehicleId,
-      bookingStatus: { $in: ['Pending', 'Confirmed'] }
+      bookingStatus: { $in: ['Confirmed'] }
     }).sort({ pickupDate: 1 });
 
     let conflict = false;
@@ -150,6 +150,16 @@ const cancelBooking = async (req, res) => {
     booking.bookingStatus = 'Cancelled';
     await booking.save();
 
+    // Update ChatRoom if any
+    const ChatRoom = require('../models/ChatRoom');
+    await ChatRoom.findOneAndUpdate(
+      { bookingId: booking._id },
+      { 
+        isBooked: false, 
+        bookingId: null 
+      }
+    );
+
     res.json({ message: 'Booking cancelled successfully', booking });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -175,6 +185,18 @@ const updateBookingStatus = async (req, res) => {
     booking.bookingStatus = status;
     await booking.save();
 
+    // Update ChatRoom if cancelled or completed
+    if (status === 'Cancelled' || status === 'Completed') {
+      const ChatRoom = require('../models/ChatRoom');
+      await ChatRoom.findOneAndUpdate(
+        { bookingId: booking._id },
+        { 
+          isBooked: false, 
+          bookingId: null 
+        }
+      );
+    }
+
     res.json(booking);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -189,7 +211,7 @@ const getVehicleBookedDates = async (req, res) => {
     const { vehicleId } = req.params;
     const bookings = await Booking.find({
       vehicle: vehicleId,
-      bookingStatus: { $in: ['Pending', 'Confirmed'] }
+      bookingStatus: { $in: ['Confirmed'] }
     }).select('pickupDate returnDate -_id');
     
     res.json(bookings);

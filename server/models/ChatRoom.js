@@ -12,6 +12,7 @@ const chatRoomSchema = new mongoose.Schema({
   lastMessage: { type: String, default: '' },
   lastMessageTime: { type: Date, default: Date.now },
   unreadCount: { type: Number, default: 0 },
+  userUnreadCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('ChatRoom', chatRoomSchema);

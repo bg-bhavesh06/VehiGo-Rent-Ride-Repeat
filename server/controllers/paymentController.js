@@ -95,6 +95,15 @@ const verifyPayment = async (req, res) => {
         // If advance payment is done, confirm the booking
         if (booking.bookingStatus === 'Pending') {
            booking.bookingStatus = 'Confirmed';
+
+           const ChatRoom = require('../models/ChatRoom');
+           await ChatRoom.findOneAndUpdate(
+             { userId: booking.user, vehicleId: booking.vehicle },
+             { 
+               isBooked: true, 
+               bookingId: booking._id 
+             }
+           );
         }
 
         await booking.save();

@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const connectDB = require('./config/db');
 
 // Connect Database
@@ -33,8 +32,13 @@ io.on('connection', (socket) => {
     console.log(`User with ID: ${socket.id} joined room: ${data}`);
   });
 
+  socket.on('join_user_room', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`User with ID: ${socket.id} joined personal room: user_${userId}`);
+  });
+
   socket.on('send_message', (data) => {
-    socket.to(data.roomId).emit('receive_message', data);
+    socket.to(data.roomId).to(`user_${data.receiverId}`).emit('receive_message', data);
   });
 
   socket.on('disconnect', () => {
@@ -47,7 +51,7 @@ app.use(cors());
 app.use(express.json());
 
 // Basic Route
-app.get('/api/health', (req, res) => {
+app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
@@ -57,13 +61,6 @@ app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/chats', require('./routes/chatRoutes'));
-
-// Serve React frontend in production
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-});
 
 const PORT = process.env.PORT || 5000;
 

@@ -14,10 +14,35 @@ const getOwnerChatRooms = async (req, res) => {
   }
 };
 
+const getUserChatRooms = async (req, res) => {
+  try {
+    const chatRooms = await ChatRoom.find({ userId: req.user._id })
+        .populate('vehicleId', 'name images')
+        .populate('ownerId', 'name email')
+        .populate('bookingId', 'pickupDate returnDate bookingStatus')
+        .sort({ lastMessageTime: -1 });
+    res.json(chatRooms);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const Booking = require('../models/Booking');
+
 const startOrGetChatRoom = async (req, res) => {
   try {
-    const { vehicleId, ownerId, bookingId, isBooked } = req.body;
+    const { vehicleId, ownerId } = req.body;
     const userId = req.user._id;
+
+    // Check for an active booking
+    const activeBooking = await Booking.findOne({
+      user: userId,
+      vehicle: vehicleId,
+      bookingStatus: { $in: ['Confirmed'] }
+    });
+
+    const isBooked = !!activeBooking;
+    const bookingId = activeBooking ? activeBooking._id : null;
 
     let chatRoom = await ChatRoom.findOne({ vehicleId, userId });
 
@@ -31,17 +56,17 @@ const startOrGetChatRoom = async (req, res) => {
         userName: user.name,
         userContact: user.contactNumber || user.email,
         userEmail: user.email,
-        bookingId: bookingId || null,
-        isBooked: isBooked || false
+        bookingId: bookingId,
+        isBooked: isBooked
       });
     } else {
-      // Update booking status if changed
+      // Update booking status
       let shouldSave = false;
-      if (isBooked !== undefined && chatRoom.isBooked !== isBooked) {
+      if (chatRoom.isBooked !== isBooked) {
         chatRoom.isBooked = isBooked;
         shouldSave = true;
       }
-      if (bookingId && chatRoom.bookingId?.toString() !== bookingId) {
+      if (chatRoom.bookingId?.toString() !== bookingId?.toString()) {
         chatRoom.bookingId = bookingId;
         shouldSave = true;
       }
@@ -58,8 +83,20 @@ const getChatMessages = async (req, res) => {
   try {
     const messages = await Message.find({ chatroomId: req.params.roomId }).sort({ createdAt: 1 });
     
-    // reset unread count when messages are fetched by receiver (optional)
-    // we'll keep it simple for now
+    // reset unread count
+    const chatRoom = await ChatRoom.findById(req.params.roomId);
+    if (chatRoom) {
+      let shouldSave = false;
+      if (chatRoom.ownerId.toString() === req.user._id.toString()) {
+        chatRoom.unreadCount = 0;
+        shouldSave = true;
+      }
+      if (chatRoom.userId.toString() === req.user._id.toString()) {
+        chatRoom.userUnreadCount = 0;
+        shouldSave = true;
+      }
+      if (shouldSave) await chatRoom.save();
+    }
 
     res.json(messages);
   } catch (error) {
@@ -80,11 +117,24 @@ const saveMessage = async (req, res) => {
       imageUrl
     });
 
+    const chatroom = await ChatRoom.findById(chatroomId);
+    let incOwnerUnread = 0;
+    let incUserUnread = 0;
+
+    // Increment unread count for owner if user sends message
+    if (receiverId.toString() === chatroom.ownerId.toString()) {
+      incOwnerUnread = 1;
+    }
+    // Increment unread count for user if owner sends message
+    if (receiverId.toString() === chatroom.userId.toString()) {
+      incUserUnread = 1;
+    }
+
     // Update last message in chatroom
     await ChatRoom.findByIdAndUpdate(chatroomId, {
       lastMessage: messageText || 'Image',
       lastMessageTime: Date.now(),
-      $inc: { unreadCount: req.user._id.toString() !== receiverId.toString() ? 1 : 0 }
+      $inc: { unreadCount: incOwnerUnread, userUnreadCount: incUserUnread }
     });
 
     res.status(201).json(message);
@@ -93,9 +143,32 @@ const saveMessage = async (req, res) => {
   }
 };
 
+const markRoomAsRead = async (req, res) => {
+  try {
+    const chatRoom = await ChatRoom.findById(req.params.roomId);
+    if (chatRoom) {
+      let shouldSave = false;
+      if (chatRoom.ownerId.toString() === req.user._id.toString()) {
+        chatRoom.unreadCount = 0;
+        shouldSave = true;
+      }
+      if (chatRoom.userId.toString() === req.user._id.toString()) {
+        chatRoom.userUnreadCount = 0;
+        shouldSave = true;
+      }
+      if (shouldSave) await chatRoom.save();
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getOwnerChatRooms,
+  getUserChatRooms,
   startOrGetChatRoom,
   getChatMessages,
-  saveMessage
+  saveMessage,
+  markRoomAsRead
 };

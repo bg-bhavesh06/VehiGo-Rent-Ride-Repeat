@@ -6,11 +6,29 @@ import UserChat from '../components/UserChat';
 import { io } from 'socket.io-client';
 
 const UserDashboard = () => {
-  const { user } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.put('/api/auth/profile', formData, config);
+      
+      updateUser(data);
+    } catch (error) {
+      console.error(error);
+      alert('Error updating profile picture');
+    }
+  };
 
   const fetchUnreadCount = async () => {
     try {
@@ -142,8 +160,18 @@ const UserDashboard = () => {
         <div className="w-full md:w-64 flex-shrink-0">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="text-center mb-6 pb-6 border-b border-gray-100">
-              <div className="h-16 w-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold mb-3">
-                {user?.name?.charAt(0)}
+              <div className="h-16 w-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold mb-3 relative group overflow-hidden cursor-pointer shadow-sm border border-gray-200">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{user?.name?.charAt(0)}</span>
+                )}
+                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <label className="cursor-pointer w-full h-full flex items-center justify-center">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                    <span className="text-[10px] text-white font-bold uppercase tracking-wider">Upload</span>
+                  </label>
+                </div>
               </div>
               <h3 className="font-bold text-gray-900">{user?.name}</h3>
               <p className="text-sm text-gray-500">Renter Account</p>

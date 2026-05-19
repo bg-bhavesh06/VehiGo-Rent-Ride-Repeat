@@ -13,7 +13,7 @@ const upload = require('../middleware/uploadMiddleware');
 
 router.route('/')
   .get(getVehicles)
-  .post(protect, ownerOnly, upload.array('images', 5), addVehicle);
+  .post(protect, ownerOnly, upload.array('images'), addVehicle);
 
 router.route('/owner')
   .get(protect, ownerOnly, getOwnerVehicles);

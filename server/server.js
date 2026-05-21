@@ -1,8 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const connectDB = require('./config/db');
+const path = require('path');
 
 // Connect Database
 connectDB();
@@ -62,7 +62,6 @@ app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/chats', require('./routes/chatRoutes'));
-
 
 app.use(express.static(path.join(__dirname, '../client/dist')));
 

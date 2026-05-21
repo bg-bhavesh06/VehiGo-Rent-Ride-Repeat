@@ -11,6 +11,19 @@ const vehicleSchema = new mongoose.Schema({
   pricePerHour: { type: Number, required: true },
   location: { type: String, required: true },
   description: { type: String },
+  latitude: { type: Number, required: true },
+  longitude: { type: Number, required: true },
+  locationCoordinates: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      required: true
+    }
+  },
   availabilityStatus: { type: Boolean, default: true },
   images: [{ type: String }], // Cloudinary URLs
   owner: {
@@ -19,5 +32,7 @@ const vehicleSchema = new mongoose.Schema({
     required: true,
   },
 }, { timestamps: true });
+
+vehicleSchema.index({ locationCoordinates: '2dsphere' });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

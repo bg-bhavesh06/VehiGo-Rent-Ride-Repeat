@@ -6,6 +6,26 @@ import { MapPin, Settings, User, CheckCircle, XCircle, Upload, Calendar, Message
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { io } from 'socket.io-client';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+
+// Custom component to fit bounds for route or locations
+const MapBoundsFitter = ({ userLoc, vehicleLoc, routePoints }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (routePoints && routePoints.length > 0) {
+      const bounds = L.latLngBounds(routePoints);
+      map.fitBounds(bounds, { padding: [40, 40] });
+    } else if (userLoc && vehicleLoc) {
+      const bounds = L.latLngBounds([
+        [userLoc.lat, userLoc.lon],
+        [vehicleLoc.lat, vehicleLoc.lon]
+      ]);
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }, [userLoc, vehicleLoc, routePoints, map]);
+  return null;
+};
 
 const VehicleDetail = () => {
   const { id } = useParams();
@@ -45,6 +65,93 @@ const VehicleDetail = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState(null);
+
+  // Direction Map State
+  const [userLoc, setUserLoc] = useState(null);
+  const [showDirectionMap, setShowDirectionMap] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [routePoints, setRoutePoints] = useState([]);
+  const [roadDistance, setRoadDistance] = useState(null);
+  const [roadDuration, setRoadDuration] = useState(null);
+  const [routingLoading, setRoutingLoading] = useState(false);
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const d = R * c; // Distance in km
+    return d.toFixed(2);
+  };
+
+  const fetchRoute = async (userLatitude, userLongitude, vehicleLatitude, vehicleLongitude) => {
+    setRoutingLoading(true);
+    try {
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${userLongitude},${userLatitude};${vehicleLongitude},${vehicleLatitude}?overview=full&geometries=geojson`
+      );
+      const data = await response.json();
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        // Convert GeoJSON [lon, lat] to Leaflet [lat, lon]
+        const points = route.geometry.coordinates.map((coord) => [coord[1], coord[0]]);
+        setRoutePoints(points);
+        setRoadDistance((route.distance / 1000).toFixed(2)); // km
+        setRoadDuration(Math.round(route.duration / 60)); // minutes
+      } else {
+        // Fallback to straight line if OSRM fails
+        setRoutePoints([[userLatitude, userLongitude], [vehicleLatitude, vehicleLongitude]]);
+        setRoadDistance(null);
+        setRoadDuration(null);
+      }
+    } catch (err) {
+      console.error('Error fetching route:', err);
+      // Fallback
+      setRoutePoints([[userLatitude, userLongitude], [vehicleLatitude, vehicleLongitude]]);
+      setRoadDistance(null);
+      setRoadDuration(null);
+    }
+    setRoutingLoading(false);
+  };
+
+  const handleGetDirection = () => {
+    if (showDirectionMap) {
+      setShowDirectionMap(false);
+      return;
+    }
+    
+    setGeoLoading(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const uLat = position.coords.latitude;
+          const uLon = position.coords.longitude;
+          setUserLoc({ lat: uLat, lon: uLon });
+          
+          if (vehicle?.latitude && vehicle?.longitude) {
+            await fetchRoute(uLat, uLon, vehicle.latitude, vehicle.longitude);
+          }
+          
+          setShowDirectionMap(true);
+          setGeoLoading(false);
+        },
+        (error) => {
+          setGeoLoading(false);
+          alert("Error getting location. Showing vehicle location only.");
+          setShowDirectionMap(true);
+        }
+      );
+    } else {
+      setGeoLoading(false);
+      alert("Geolocation is not supported by your browser");
+      setShowDirectionMap(true);
+    }
+  };
 
   useEffect(() => {
     const fetchVehicle = async () => {
@@ -316,14 +423,28 @@ const VehicleDetail = () => {
               </div>
             </div>
 
-            {/* Chat Button */}
-            <div className="mb-8 border-t border-gray-100 pt-6">
+            {/* Chat & Direction Buttons */}
+            <div className="mb-8 border-t border-gray-100 pt-6 flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={handleStartChat}
-                className="flex items-center justify-center gap-2 w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-bold transition shadow-md"
+                className="flex items-center justify-center gap-2 flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3.5 rounded-xl font-bold transition shadow-md"
               >
                 <MessageCircle className="h-5 w-5" />
                 Chat with Owner
+              </button>
+              <button 
+                onClick={handleGetDirection}
+                disabled={geoLoading}
+                className="flex items-center justify-center gap-2 flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-xl font-bold transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {geoLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <MapPin className="h-5 w-5" />
+                    Get Direction
+                  </>
+                )}
               </button>
             </div>
 
@@ -524,6 +645,119 @@ const VehicleDetail = () => {
               <Send className="h-4 w-4 -ml-0.5" />
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Direction Map Popup */}
+      {showDirectionMap && (
+        <div className={`fixed bottom-4 ${isChatOpen ? 'right-[324px] md:right-[360px]' : 'right-4 md:right-10'} w-[320px] md:w-[400px] h-[400px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-200 flex flex-col z-[100] overflow-hidden transition-all duration-300`}>
+          {/* Header */}
+          <div className="bg-emerald-600 p-3 flex justify-between items-center text-white">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-emerald-100" />
+              <div>
+                <p className="font-bold text-sm leading-tight">Get Directions</p>
+                {routingLoading ? (
+                  <p className="text-[10px] text-emerald-200 animate-pulse font-medium">Calculating route...</p>
+                ) : roadDistance ? (
+                  <p className="text-[10px] text-emerald-100 font-semibold flex items-center gap-2">
+                    <span>🚗 {roadDistance} km</span>
+                    {roadDuration && <span>⏱️ {roadDuration} mins</span>}
+                  </p>
+                ) : userLoc && vehicle?.latitude && vehicle?.longitude ? (
+                  <p className="text-[10px] text-emerald-100 font-semibold">
+                    Distance: {calculateDistance(userLoc.lat, userLoc.lon, vehicle.latitude, vehicle.longitude)} km
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-emerald-200">Locating vehicle...</p>
+                )}
+              </div>
+            </div>
+            <button onClick={() => setShowDirectionMap(false)} className="text-emerald-200 hover:text-white transition">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          {/* Map Area */}
+          <div className="flex-1 relative bg-gray-100">
+            {vehicle?.latitude && vehicle?.longitude ? (
+              <MapContainer 
+                center={userLoc ? [(userLoc.lat + vehicle.latitude) / 2, (userLoc.lon + vehicle.longitude) / 2] : [vehicle.latitude, vehicle.longitude]}
+                zoom={userLoc ? 12 : 14} 
+                style={{ width: '100%', height: '100%' }}
+                zoomControl={true}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                
+                {/* Fit bounds dynamically */}
+                {userLoc && (
+                  <MapBoundsFitter 
+                    userLoc={userLoc} 
+                    vehicleLoc={{ lat: vehicle.latitude, lon: vehicle.longitude }} 
+                    routePoints={routePoints}
+                  />
+                )}
+                
+                {/* Vehicle Marker */}
+                <Marker 
+                  position={[vehicle.latitude, vehicle.longitude]}
+                  icon={L.divIcon({
+                    html: `<div class="bg-emerald-600 text-white p-1.5 rounded-full shadow-lg border border-white flex items-center justify-center font-bold" style="width: 28px; height: 28px; transform: translate(-50%, -50%);">🚗</div>`,
+                    className: 'vehicle-marker-pin',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                  })}
+                >
+                  <Popup>
+                    <div className="text-xs font-bold">{vehicle.name}</div>
+                  </Popup>
+                </Marker>
+
+                {/* User Marker */}
+                {userLoc && (
+                  <Marker 
+                    position={[userLoc.lat, userLoc.lon]}
+                    icon={L.divIcon({
+                      html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(59,130,246,0.8)]" style="transform: translate(-50%, -50%);"></div>`,
+                      className: 'user-location-pin',
+                      iconSize: [16, 16],
+                      iconAnchor: [8, 8],
+                    })}
+                  >
+                    <Popup>
+                      <div className="text-xs font-bold">Your Location</div>
+                    </Popup>
+                  </Marker>
+                )}
+
+                {/* Line Connecting Them (OSRM road path or straight-line fallback) */}
+                {routePoints && routePoints.length > 0 ? (
+                  <Polyline 
+                    positions={routePoints}
+                    color="#059669"
+                    weight={5}
+                  />
+                ) : userLoc ? (
+                  <Polyline 
+                    positions={[
+                      [userLoc.lat, userLoc.lon],
+                      [vehicle.latitude, vehicle.longitude]
+                    ]}
+                    color="#059669"
+                    weight={4}
+                    dashArray="5, 10"
+                  />
+                ) : null}
+              </MapContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500 font-medium p-4 text-center">
+                Vehicle coordinates not available.
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -108,6 +108,7 @@ const OwnerVehicleCard = ({ v, handleToggleAvailability, handleDeleteVehicle }) 
 };
 import OwnerChat from '../components/OwnerChat';
 import { io } from 'socket.io-client';
+import LocationSearchInput from '../components/LocationSearchInput';
 
 const OwnerDashboard = () => {
   const { user, updateUser } = useContext(AuthContext);
@@ -121,7 +122,7 @@ const OwnerDashboard = () => {
   // Add Vehicle Form State
   const [formData, setFormData] = useState({
     name: '', brand: '', type: 'Car', model: '', vehicleNumber: '', 
-    fuelType: 'Petrol', seatingCapacity: '', pricePerHour: '', location: '', description: ''
+    fuelType: 'Petrol', seatingCapacity: '', pricePerHour: '', location: '', latitude: '', longitude: '', description: ''
   });
   const [images, setImages] = useState([]);
   const [addLoading, setAddLoading] = useState(false);
@@ -227,7 +228,7 @@ const OwnerDashboard = () => {
       // Reset form
       setFormData({
         name: '', brand: '', type: 'Car', model: '', vehicleNumber: '', 
-        fuelType: 'Petrol', seatingCapacity: '', pricePerHour: '', location: '', description: ''
+        fuelType: 'Petrol', seatingCapacity: '', pricePerHour: '', location: '', latitude: '', longitude: '', description: ''
       });
       setImages([]);
     } catch (error) {
@@ -427,7 +428,10 @@ const OwnerDashboard = () => {
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <input required type="text" name="location" value={formData.location} onChange={handleInputChange} className="w-full p-3 rounded-xl border border-gray-200" />
+                    <LocationSearchInput 
+                      value={formData.location}
+                      onLocationSelect={(data) => setFormData({ ...formData, location: data.location, latitude: data.latitude, longitude: data.longitude })}
+                    />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

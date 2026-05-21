@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Clock, MapPin, Search } from 'lucide-react';
+import SmartLocationSearch from '../components/SmartLocationSearch';
 
 const Home = () => {
   return (
@@ -20,15 +21,8 @@ const Home = () => {
           </p>
           
           {/* Quick Search Bar */}
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl flex flex-col md:flex-row gap-4 max-w-3xl mx-auto shadow-2xl border border-white/20">
-            <div className="flex-1 relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Location" className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/90 focus:outline-none focus:ring-2 focus:ring-primary-500 transition" />
-            </div>
-            <Link to="/vehicles" className="bg-primary-600 hover:bg-primary-500 text-white px-8 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-primary-600/30">
-              <Search className="h-5 w-5" />
-              Search
-            </Link>
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl max-w-3xl mx-auto shadow-2xl border border-white/20 text-left">
+            <SmartLocationSearch autoNavigate={true} />
           </div>
         </div>
       </section>

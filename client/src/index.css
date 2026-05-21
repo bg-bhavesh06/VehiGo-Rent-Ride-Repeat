@@ -19,3 +19,12 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
+
+.leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.leaflet-popup-content {
+  margin: 0;
+}

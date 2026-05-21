@@ -20,7 +20,7 @@ const uploadToCloudinary = (fileBuffer) => {
 // @access  Private/Owner
 const addVehicle = async (req, res) => {
   try {
-    const { name, brand, type, model, vehicleNumber, fuelType, seatingCapacity, pricePerHour, location, description } = req.body;
+    const { name, brand, type, model, vehicleNumber, fuelType, seatingCapacity, pricePerHour, location, description, latitude, longitude } = req.body;
 
     const vehicleExists = await Vehicle.findOne({ vehicleNumber });
     if (vehicleExists) {
@@ -46,6 +46,12 @@ const addVehicle = async (req, res) => {
       pricePerHour,
       location,
       description,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      locationCoordinates: {
+        type: 'Point',
+        coordinates: [Number(longitude), Number(latitude)]
+      },
       images: imageUrls,
       owner: req.user._id,
     });
@@ -61,12 +67,25 @@ const addVehicle = async (req, res) => {
 // @access  Public
 const getVehicles = async (req, res) => {
   try {
-    const { type, location, brand, maxPrice, minPrice } = req.query;
+    const { type, location, lat, lon, brand, maxPrice, minPrice } = req.query;
     
     let query = {};
 
+    if (lat && lon) {
+      query.locationCoordinates = {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [Number(lon), Number(lat)]
+          },
+          $maxDistance: 10000 // 10 km in meters
+        }
+      };
+    } else if (location) {
+      query.location = new RegExp(location, 'i');
+    }
+
     if (type) query.type = new RegExp(type, 'i');
-    if (location) query.location = new RegExp(location, 'i');
     if (brand) query.brand = new RegExp(brand, 'i');
     if (minPrice || maxPrice) {
       query.pricePerHour = {};
@@ -129,9 +148,19 @@ const updateVehicle = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this vehicle' });
     }
 
+    const updateData = { ...req.body };
+    if (updateData.latitude && updateData.longitude) {
+      updateData.latitude = Number(updateData.latitude);
+      updateData.longitude = Number(updateData.longitude);
+      updateData.locationCoordinates = {
+        type: 'Point',
+        coordinates: [updateData.longitude, updateData.latitude]
+      };
+    }
+
     const updatedVehicle = await Vehicle.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
     );
 
@@ -190,6 +219,22 @@ const getOwnerVehicles = async (req, res) => {
   }
 };
 
+// @desc    Get unique cities where vehicles are available
+// @route   GET /api/vehicles/cities
+// @access  Public
+const getVehicleCities = async (req, res) => {
+  try {
+    const cities = await Vehicle.distinct('location', { availabilityStatus: true });
+    
+    // The locations might be full addresses like "Waghodiya, Vadodara, Gujarat"
+    // For city suggestions, we might just return the raw distinct locations or process them.
+    // The user instruction: "City suggestions ONLY from cities where vehicles actually exist in MongoDB"
+    res.json(cities);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   addVehicle,
   getVehicles,
@@ -197,4 +242,5 @@ module.exports = {
   updateVehicle,
   deleteVehicle,
   getOwnerVehicles,
+  getVehicleCities,
 };

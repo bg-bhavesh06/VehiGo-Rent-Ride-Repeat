@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -74,6 +74,107 @@ const VehicleDetail = () => {
   const [roadDistance, setRoadDistance] = useState(null);
   const [roadDuration, setRoadDuration] = useState(null);
   const [routingLoading, setRoutingLoading] = useState(false);
+
+  // Chat Card Dragging State & Refs
+  const [chatPosition, setChatPosition] = useState({ x: 0, y: 0 });
+  const [isChatDragging, setIsChatDragging] = useState(false);
+  const chatDragRef = useRef({ isDragging: false, startX: 0, startY: 0, posX: 0, posY: 0 });
+
+  // Directions Card Dragging State & Refs
+  const [dirPosition, setDirPosition] = useState({ x: 0, y: 0 });
+  const [isDirDragging, setIsDirDragging] = useState(false);
+  const dirDragRef = useRef({ isDragging: false, startX: 0, startY: 0, posX: 0, posY: 0 });
+
+  const handleChatMouseDown = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('svg')) return;
+
+    chatDragRef.current.isDragging = true;
+    chatDragRef.current.startX = e.clientX;
+    chatDragRef.current.startY = e.clientY;
+    chatDragRef.current.posX = chatPosition.x;
+    chatDragRef.current.posY = chatPosition.y;
+    
+    setIsChatDragging(true);
+    
+    document.addEventListener('mousemove', handleChatMouseMove);
+    document.addEventListener('mouseup', handleChatMouseUp);
+    
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+  };
+
+  const handleChatMouseMove = (e) => {
+    if (!chatDragRef.current.isDragging) return;
+    const dx = e.clientX - chatDragRef.current.startX;
+    const dy = e.clientY - chatDragRef.current.startY;
+    
+    setChatPosition({
+      x: chatDragRef.current.posX + dx,
+      y: chatDragRef.current.posY + dy
+    });
+  };
+
+  const handleChatMouseUp = () => {
+    chatDragRef.current.isDragging = false;
+    setIsChatDragging(false);
+    document.removeEventListener('mousemove', handleChatMouseMove);
+    document.removeEventListener('mouseup', handleChatMouseUp);
+    
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  };
+
+  const handleDirMouseDown = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('svg')) return;
+
+    dirDragRef.current.isDragging = true;
+    dirDragRef.current.startX = e.clientX;
+    dirDragRef.current.startY = e.clientY;
+    dirDragRef.current.posX = dirPosition.x;
+    dirDragRef.current.posY = dirPosition.y;
+    
+    setIsDirDragging(true);
+    
+    document.addEventListener('mousemove', handleDirMouseMove);
+    document.addEventListener('mouseup', handleDirMouseUp);
+    
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+  };
+
+  const handleDirMouseMove = (e) => {
+    if (!dirDragRef.current.isDragging) return;
+    const dx = e.clientX - dirDragRef.current.startX;
+    const dy = e.clientY - dirDragRef.current.startY;
+    
+    setDirPosition({
+      x: dirDragRef.current.posX + dx,
+      y: dirDragRef.current.posY + dy
+    });
+  };
+
+  const handleDirMouseUp = () => {
+    dirDragRef.current.isDragging = false;
+    setIsDirDragging(false);
+    document.removeEventListener('mousemove', handleDirMouseMove);
+    document.removeEventListener('mouseup', handleDirMouseUp);
+    
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  };
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleChatMouseMove);
+      document.removeEventListener('mouseup', handleChatMouseUp);
+      document.removeEventListener('mousemove', handleDirMouseMove);
+      document.removeEventListener('mouseup', handleDirMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, []);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null;
@@ -596,9 +697,18 @@ const VehicleDetail = () => {
 
       {/* Chat Card Popup */}
       {isChatOpen && (
-        <div className="fixed bottom-4 right-4 md:bottom-10 md:right-10 w-[300px] h-[400px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-200 flex flex-col z-[100] overflow-hidden">
+        <div 
+          className="fixed bottom-4 right-4 md:bottom-10 md:right-10 w-[300px] h-[400px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-200 flex flex-col z-[100] overflow-hidden"
+          style={{
+            transform: `translate(${chatPosition.x}px, ${chatPosition.y}px)`,
+            transition: isChatDragging ? 'none' : 'transform 0.3s'
+          }}
+        >
           {/* Header */}
-          <div className="bg-blue-600 p-3 flex justify-between items-center text-white">
+          <div 
+            className="bg-blue-600 p-3 flex justify-between items-center text-white cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={handleChatMouseDown}
+          >
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center font-bold text-sm">
                 {vehicle?.owner?.name?.charAt(0) || 'O'}
@@ -650,9 +760,18 @@ const VehicleDetail = () => {
 
       {/* Direction Map Popup */}
       {showDirectionMap && (
-        <div className={`fixed bottom-4 ${isChatOpen ? 'right-[324px] md:right-[360px]' : 'right-4 md:right-10'} w-[320px] md:w-[400px] h-[400px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-200 flex flex-col z-[100] overflow-hidden transition-all duration-300`}>
+        <div 
+          className={`fixed bottom-4 ${isChatOpen && dirPosition.x === 0 && dirPosition.y === 0 ? 'right-[324px] md:right-[360px]' : 'right-4 md:right-10'} w-[320px] md:w-[400px] h-[400px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-200 flex flex-col z-[100] overflow-hidden`}
+          style={{
+            transform: `translate(${dirPosition.x}px, ${dirPosition.y}px)`,
+            transition: isDirDragging ? 'none' : 'transform 0.3s'
+          }}
+        >
           {/* Header */}
-          <div className="bg-emerald-600 p-3 flex justify-between items-center text-white">
+          <div 
+            className="bg-emerald-600 p-3 flex justify-between items-center text-white cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={handleDirMouseDown}
+          >
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-emerald-100" />
               <div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
+import AIChatBot from './AIChatBot';
 
 const Layout = () => {
   return (
@@ -9,6 +10,7 @@ const Layout = () => {
       <main className="flex-grow bg-gray-50">
         <Outlet />
       </main>
+      <AIChatBot />
       <footer className="bg-dark-900 text-white py-6 text-center">
         <p>&copy; {new Date().getFullYear()} AutoBook Platform. All rights reserved.</p>
       </footer>

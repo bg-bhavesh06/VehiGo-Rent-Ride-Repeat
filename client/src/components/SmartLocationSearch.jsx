@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { MapPin, Search, Navigation, Building2 } from 'lucide-react';
+import { MapPin, Search, Navigation, Building2, Locate } from 'lucide-react';
 
-const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true }) => {
+const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true, isSidebar = false }) => {
   const [query, setQuery] = useState(initialValue);
   const [showDropdown, setShowDropdown] = useState(false);
   const [dbCities, setDbCities] = useState([]);
@@ -140,9 +140,9 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true 
   };
 
   return (
-    <div className="relative w-full flex flex-col md:flex-row gap-4" ref={dropdownRef}>
+    <div className={`relative w-full flex ${isSidebar ? 'flex-col gap-2' : 'flex-col md:flex-row gap-4'}`} ref={dropdownRef}>
       <div className="flex-1 relative">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+        <MapPin className={`absolute top-1/2 transform -translate-y-1/2 text-gray-400 ${isSidebar ? 'left-2.5 h-4 w-4' : 'left-3 h-5 w-5'}`} />
         <input 
           type="text" 
           value={query}
@@ -152,11 +152,29 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true 
           }}
           onFocus={() => setShowDropdown(true)}
           placeholder="Where do you want to rent?"
-          className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/90 text-gray-900 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition shadow-inner"
+          className={`w-full rounded-xl bg-white/90 text-gray-900 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition shadow-inner ${isSidebar ? 'py-2 pl-8 pr-4 text-sm' : 'py-3 pl-10 pr-24 text-base'}`}
         />
+        
+        {/* Near me pill inside the input field - Main page only */}
+        {!isSidebar && (
+          <button
+            type="button"
+            onClick={handleNearbyClick}
+            disabled={geoLoading}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full font-bold transition flex items-center justify-center gap-1 cursor-pointer select-none active:scale-95 disabled:opacity-75 py-1.5 px-3 text-xs"
+          >
+            {geoLoading ? (
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary-600"></div>
+            ) : (
+              <Locate className="h-3.5 w-3.5 text-gray-600" />
+            )}
+            <span>Near me</span>
+          </button>
+        )}
+
         {loading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+          <div className={`absolute top-1/2 transform -translate-y-1/2 ${isSidebar ? 'right-3' : 'right-24'}`}>
+            <div className={`animate-spin rounded-full border-b-2 border-primary-600 ${isSidebar ? 'h-3.5 w-3.5' : 'h-4 w-4'}`}></div>
           </div>
         )}
 
@@ -164,37 +182,20 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true 
         {showDropdown && (
           <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto overflow-x-hidden">
             
-            {/* Show Nearby and DB Cities when query is short */}
-            {query.length < 3 && (
-              <div className="py-2">
-                <div 
-                  onClick={handleNearbyClick}
-                  className="px-4 py-3 hover:bg-primary-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 transition-colors"
-                >
-                  <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
-                    {geoLoading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div> : <Navigation className="h-5 w-5" />}
+            {/* Show DB Cities when query is short */}
+            {query.length < 3 && dbCities.length > 0 && (
+              <div className="px-4 pt-4 pb-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Available Cities</p>
+                {dbCities.map((city, idx) => (
+                  <div 
+                    key={idx}
+                    onClick={() => handleCityClick(city)}
+                    className="py-2.5 px-2 hover:bg-gray-50 rounded-lg cursor-pointer flex items-center gap-3 transition-colors text-gray-700"
+                  >
+                    <Building2 className="h-4 w-4 text-gray-400" />
+                    <span className="font-medium text-gray-800">{city}</span>
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-900">Nearby</p>
-                    <p className="text-xs text-gray-500">Find vehicles near your current location</p>
-                  </div>
-                </div>
-
-                {dbCities.length > 0 && (
-                  <div className="px-4 pt-4 pb-2">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Available Cities</p>
-                    {dbCities.map((city, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleCityClick(city)}
-                        className="py-2.5 px-2 hover:bg-gray-50 rounded-lg cursor-pointer flex items-center gap-3 transition-colors text-gray-700"
-                      >
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-800">{city}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
             )}
 
@@ -228,13 +229,39 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true 
         )}
       </div>
 
-      <button 
-        onClick={handleManualSearch}
-        className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-primary-600/30 whitespace-nowrap"
-      >
-        <Search className="h-5 w-5" />
-        Search
-      </button>
+      {isSidebar ? (
+        <div className="flex gap-2 w-full">
+          <button 
+            type="submit"
+            onClick={handleManualSearch}
+            className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-primary-600/30 whitespace-nowrap flex-1 py-2 px-3 text-sm cursor-pointer"
+          >
+            <Search className="h-4 w-4" />
+            Search
+          </button>
+          <button 
+            type="button"
+            onClick={handleNearbyClick}
+            disabled={geoLoading}
+            className="border border-primary-200 bg-primary-50/60 hover:bg-primary-100/80 text-primary-700 rounded-xl font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap flex-1 py-2 px-3 text-sm disabled:opacity-75 cursor-pointer"
+          >
+            {geoLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+            ) : (
+              <Navigation className="h-4 w-4 rotate-45" />
+            )}
+            Near Me
+          </button>
+        </div>
+      ) : (
+        <button 
+          onClick={handleManualSearch}
+          className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-primary-600/30 whitespace-nowrap w-full md:w-auto cursor-pointer"
+        >
+          <Search className="h-5 w-5" />
+          Search
+        </button>
+      )}
     </div>
   );
 };

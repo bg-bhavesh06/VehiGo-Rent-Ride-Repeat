@@ -12,7 +12,7 @@ const Home = () => {
         {/* Abstract background elements instead of a raw image to ensure it looks good immediately */}
         <div className="absolute inset-0 opacity-30 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0wIDEwaDQwTTEwIDB2NDBtMjAgMHYtNDBNMCAzMGg0MCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuMSIvPjwvc3ZnPg==')] z-0"></div>
         
-        <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
+        <div className="relative z-20 text-center px-4 max-w-4xl mx-auto flex flex-col items-center">
           <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 tracking-tight">
             Find Your Perfect <span className="text-primary-500">Ride</span>
           </h1>
@@ -21,8 +21,10 @@ const Home = () => {
           </p>
           
           {/* Quick Search Bar */}
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl max-w-3xl mx-auto shadow-2xl border border-white/20 text-left">
-            <SmartLocationSearch autoNavigate={true} />
+          <div className="w-full max-w-3xl">
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white/20 text-left">
+              <SmartLocationSearch autoNavigate={true} />
+            </div>
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Filter, MapPin, Settings, User, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, Filter, MapPin, Settings, User, ChevronLeft, ChevronRight, X, Navigation } from 'lucide-react';
 import SmartLocationSearch from '../components/SmartLocationSearch';
 import VehicleMap from '../components/VehicleMap';
 
@@ -88,9 +88,29 @@ const VehicleCard = ({ vehicle, isHovered, onHover }) => {
           <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-md font-medium">{vehicle.type}</span>
         </div>
         
-        <p className="text-gray-500 text-sm mb-4 line-clamp-1">{vehicle.description || `${vehicle.brand} ${vehicle.model}`}</p>
+        <p className="text-gray-500 text-sm mb-3 line-clamp-1">{vehicle.description || `${vehicle.brand} ${vehicle.model}`}</p>
         
-        <div className="grid grid-cols-2 gap-y-2">
+        {vehicle.activeBookings && vehicle.activeBookings.length > 0 && (
+          <div className="mb-3 relative" onClick={(e) => e.stopPropagation()}>
+            <details className="group">
+              <summary className="text-xs font-bold text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-100 cursor-pointer list-none flex justify-between items-center outline-none">
+                <span>Booked Dates ({vehicle.activeBookings.length})</span>
+                <span className="text-orange-500 group-open:rotate-180 transition-transform text-[10px]">▼</span>
+              </summary>
+              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white border border-gray-200 shadow-xl rounded-xl p-2 max-h-32 overflow-y-auto custom-scrollbar">
+                <div className="flex flex-col gap-1">
+                  {vehicle.activeBookings.map((b, i) => (
+                    <div key={i} className="text-xs font-medium text-orange-700 bg-orange-50 px-2 py-1.5 rounded">
+                      {new Date(b.pickupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} to {new Date(b.returnDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </details>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-y-2 mb-2">
           <div className="flex items-center text-sm text-gray-600 gap-1.5">
             <MapPin className="h-4 w-4 text-gray-400" />
             <span className="truncate" title={vehicle.location}>{vehicle.location.split(',')[0]}</span>
@@ -103,6 +123,10 @@ const VehicleCard = ({ vehicle, isHovered, onHover }) => {
             <Settings className="h-4 w-4 text-gray-400" />
             {vehicle.fuelType}
           </div>
+        </div>
+
+        <div className="w-full mt-4 py-2.5 bg-gray-50 group-hover:bg-primary-50 group-hover:text-primary-700 text-gray-700 font-bold border border-gray-100 group-hover:border-primary-100 rounded-xl transition-all duration-300 text-center text-sm">
+          View Details
         </div>
       </div>
     </div>
@@ -241,123 +265,135 @@ const VehicleListing = () => {
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] w-full overflow-hidden bg-gray-50">
       
-      {/* LEFT SIDE - 60% (List and Filters) or Full Width */}
-      <div className={`w-full ${hasSearchedLocation ? 'lg:w-[60%] border-r' : 'lg:w-full'} h-full overflow-y-auto custom-scrollbar flex flex-col border-gray-200 bg-white`}>
-        
-        {/* Filters Header (Sticky) */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 p-4 shadow-sm">
-          <div className="flex flex-col gap-4">
-            
-            {/* Location Smart Search */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Location</label>
-              <SmartLocationSearch 
-                initialValue={filters.location} 
-                onSearch={handleLocationSearch}
-                autoNavigate={false}
-              />
-            </div>
-
-            {/* Other Filters */}
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Vehicle Type</label>
-                <select 
-                  name="type"
-                  value={filters.type}
-                  onChange={handleFilterChange}
-                  className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                >
-                  <option value="">All Types</option>
-                  <option value="Car">Car</option>
-                  <option value="Bike">Bike</option>
-                  <option value="SUV">SUV</option>
-                </select>
-              </div>
-              {(filters.location || filters.type) && (
-                <div className="flex items-end">
-                  <button 
-                    onClick={clearSearch}
-                    className="p-2.5 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-xl transition-colors flex items-center justify-center"
-                    title="Clear Filters"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Vehicle List */}
-        <div className="p-4 flex-1">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900">
-              {loading ? 'Searching...' : `${vehicles.length} vehicles found`}
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
-            </div>
-          ) : vehicles.length === 0 ? (
-            <div className="bg-gray-50 p-8 text-center rounded-2xl border border-gray-100 mt-4">
-              <Search className="mx-auto h-10 w-10 text-gray-300 mb-3" />
-              <h3 className="text-lg font-bold text-gray-900">No vehicles found</h3>
-              <p className="text-gray-500 text-sm mt-1 mb-6">We couldn't find any vehicles matching your current search criteria.</p>
-              
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={showNearest}
-                  className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-xl font-bold transition"
-                >
-                  Show nearest vehicles
-                </button>
-                <button 
-                  onClick={clearSearch}
-                  className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 rounded-xl font-bold transition"
-                >
-                  Clear search
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className={hasSearchedLocation 
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 pb-8" 
-              : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8"
-            }>
-              {vehicles.map((vehicle) => (
-                <VehicleCard 
-                  key={vehicle._id} 
-                  vehicle={vehicle} 
-                  isHovered={hoveredVehicleId === vehicle._id}
-                  onHover={setHoveredVehicleId}
-                />
-              ))}
-            </div>
+      {/* LEFT SIDEBAR - Filters */}
+      <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-4 flex flex-col gap-4 overflow-y-auto flex-shrink-0">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+          <h2 className="font-bold text-gray-900 text-base flex items-center gap-1.5">
+            <Filter className="h-4.5 w-4.5 text-primary-600" />
+            Search & Filters
+          </h2>
+          {(filters.location || filters.type) && (
+            <button 
+              onClick={clearSearch}
+              className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors"
+            >
+              Reset All
+            </button>
           )}
+        </div>
+        {/* Location Smart Search */}
+        <div className="flex flex-col gap-1">
+          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Location</label>
+          <SmartLocationSearch 
+            initialValue={filters.location} 
+            onSearch={handleLocationSearch}
+            autoNavigate={false}
+            isSidebar={true}
+          />
+        </div>        {/* Other Filters */}
+        <div className="flex flex-col gap-1">
+          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Vehicle Type</label>
+          <div className="flex gap-2 w-full">
+            <div className="flex-1">
+              <select 
+                name="type"
+                value={filters.type}
+                onChange={handleFilterChange}
+                className="w-full py-2 px-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
+              >
+                <option value="">All Types</option>
+                <option value="Car">Car</option>
+                <option value="Bike">Bike</option>
+                <option value="SUV">SUV</option>
+              </select>
+            </div>
+            {(filters.location || filters.type) && (
+              <button 
+                onClick={clearSearch}
+                className="p-2 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-xl transition-colors flex items-center justify-center"
+                title="Clear Filters"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* RIGHT SIDE - 40% (Map) */}
-      {hasSearchedLocation && (
-        <div className="hidden lg:block w-[40%] h-full p-4">
-          <VehicleMap 
-            vehicles={vehicles} 
-            center={mapCenter} 
-            userLocation={userLocation}
-            hoveredVehicleId={hoveredVehicleId}
-            onPinHover={setHoveredVehicleId}
-            onPinClick={(id) => {
-              setHoveredVehicleId(id);
-              // Optionally scroll the left list to the card, but highlight is enough for now
-            }}
-          />
-        </div>
-      )}
+      {/* MAIN CONTENT AREA - List & Map */}
+      <div className="flex-1 h-full flex flex-col lg:flex-row overflow-hidden">
+        
+        {/* Vehicle List */}
+        <div className={`w-full ${hasSearchedLocation ? 'lg:w-[60%] border-r border-gray-200' : 'w-full'} h-full overflow-y-auto custom-scrollbar flex flex-col bg-white`}>
+          <div className="p-5 flex-1">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-bold text-gray-900 text-lg">
+                {loading ? 'Searching...' : `${vehicles.length} vehicles found`}
+              </h2>
+            </div>
 
-      {/* Mobile Map Toggle (Optional, but good for UX. The prompt doesn't strictly ask for mobile, but it's good practice) */}
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+              </div>
+            ) : vehicles.length === 0 ? (
+              <div className="bg-gray-50 p-8 text-center rounded-2xl border border-gray-100 mt-4">
+                <Search className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+                <h3 className="text-lg font-bold text-gray-900">No vehicles found</h3>
+                <p className="text-gray-500 text-sm mt-1 mb-6">We couldn't find any vehicles matching your current search criteria.</p>
+                
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={showNearest}
+                    className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-xl font-bold transition"
+                  >
+                    Show nearest vehicles
+                  </button>
+                  <button 
+                    onClick={clearSearch}
+                    className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 rounded-xl font-bold transition"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className={hasSearchedLocation 
+                ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4 pb-8" 
+                : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-8"
+              }>
+                {vehicles.map((vehicle) => (
+                  <VehicleCard 
+                    key={vehicle._id} 
+                    vehicle={vehicle} 
+                    isHovered={hoveredVehicleId === vehicle._id}
+                    onHover={setHoveredVehicleId}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Map */}
+        {hasSearchedLocation && (
+          <div className="hidden lg:block w-[40%] h-full p-4 bg-gray-50">
+            <VehicleMap 
+              vehicles={vehicles} 
+              center={mapCenter} 
+              userLocation={userLocation}
+              hoveredVehicleId={hoveredVehicleId}
+              onPinHover={setHoveredVehicleId}
+              onPinClick={(id) => {
+                setHoveredVehicleId(id);
+              }}
+            />
+          </div>
+        )}
+
+      </div>
+
+      {/* Mobile Map Toggle (Optional) */}
       {hasSearchedLocation && (
         <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
           <button 

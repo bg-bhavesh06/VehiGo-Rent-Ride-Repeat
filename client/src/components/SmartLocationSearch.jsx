@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { MapPin, Search, Navigation, Building2, Locate } from 'lucide-react';
+import { MapPin, Search, Navigation, Building2, Locate, X } from 'lucide-react';
 
 const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true, isSidebar = false }) => {
   const [query, setQuery] = useState(initialValue);
@@ -10,7 +10,15 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true,
   const [apiSuggestions, setApiSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
   const dropdownRef = useRef(null);
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => prev && prev.message === message ? null : prev);
+    }, 5000);
+  };
   const navigate = useNavigate();
 
   // Fetch cities from DB on mount
@@ -86,13 +94,13 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true,
         },
         (error) => {
           setGeoLoading(false);
-          alert("Error getting location. Please enable location services.");
+          showNotification('error', "Error getting location. Please enable location services.");
           console.error("Geolocation error:", error);
         }
       );
     } else {
       setGeoLoading(false);
-      alert("Geolocation is not supported by your browser");
+      showNotification('error', "Geolocation is not supported by your browser");
     }
   };
 
@@ -262,6 +270,14 @@ const SmartLocationSearch = ({ onSearch, initialValue = '', autoNavigate = true,
           Search
         </button>
       )}
+      {/* Custom Notification Popup */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[9999] max-w-sm bg-gray-900 text-white py-3 px-4 rounded-xl shadow-xl flex items-center justify-between gap-4 text-xs font-semibold">
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
     </div>
   );
 };

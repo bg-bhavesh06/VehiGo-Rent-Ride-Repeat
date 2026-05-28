@@ -136,6 +136,14 @@ const VehicleCard = ({ vehicle, isHovered, onHover }) => {
 const VehicleListing = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => prev && prev.message === message ? null : prev);
+    }, 5000);
+  };
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -243,7 +251,7 @@ const VehicleListing = () => {
             location: 'Current Location'
           });
         },
-        (error) => alert("Error getting location.")
+        (error) => showNotification('error', "Error getting location.")
       );
     }
   };
@@ -397,12 +405,20 @@ const VehicleListing = () => {
       {hasSearchedLocation && (
         <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
           <button 
-            onClick={() => alert('Map view is optimized for desktop in this version.')}
-            className="bg-gray-900 text-white px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2"
+            onClick={() => showNotification('info', 'Map view is optimized for desktop in this version.')}
+            className="bg-gray-900 text-white px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 cursor-pointer"
           >
             <MapPin className="h-5 w-5" />
             Map
           </button>
+        </div>
+      )}
+
+      {/* Custom Notification Popup */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[9999] max-w-sm bg-gray-900 text-white py-3 px-4 rounded-xl shadow-xl flex items-center justify-between gap-4 text-xs font-semibold">
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
         </div>
       )}
 

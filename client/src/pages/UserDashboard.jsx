@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { User, Calendar, CreditCard, XCircle, CheckCircle, Clock, MessageCircle } from 'lucide-react';
+import { User, Calendar, CreditCard, XCircle, CheckCircle, Clock, MessageCircle, X, AlertTriangle } from 'lucide-react';
 import UserChat from '../components/UserChat';
 import { io } from 'socket.io-client';
 
@@ -11,6 +11,15 @@ const UserDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => prev && prev.message === message ? null : prev);
+    }, 5000);
+  };
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
@@ -24,9 +33,10 @@ const UserDashboard = () => {
       const { data } = await axios.put('/api/auth/profile', formData, config);
       
       updateUser(data);
+      showNotification('success', 'Profile picture updated successfully!');
     } catch (error) {
       console.error(error);
-      alert('Error updating profile picture');
+      showNotification('error', 'Error updating profile picture');
     }
   };
 
@@ -68,16 +78,23 @@ const UserDashboard = () => {
     setLoading(false);
   };
 
-  const handleCancelBooking = async (id) => {
-    if (window.confirm('Are you sure you want to cancel this booking?')) {
-      try {
-        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        await axios.put(`/api/bookings/${id}/cancel`, {}, config);
-        fetchBookings();
-      } catch (error) {
-        console.error(error);
+  const handleCancelBooking = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Cancel Booking Request',
+      message: 'Are you sure you want to cancel this booking? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          const config = { headers: { Authorization: `Bearer ${user.token}` } };
+          await axios.put(`/api/bookings/${id}/cancel`, {}, config);
+          fetchBookings();
+          showNotification('success', 'Booking successfully cancelled.');
+        } catch (error) {
+          console.error(error);
+          showNotification('error', error.response?.data?.message || 'Error cancelling booking');
+        }
       }
-    }
+    });
   };
 
   // Dynamically load Razorpay SDK
@@ -95,7 +112,7 @@ const UserDashboard = () => {
     try {
       const res = await loadRazorpay();
       if (!res) {
-        alert('Razorpay SDK failed to load. Are you online?');
+        showNotification('error', 'Razorpay SDK failed to load. Are you online?');
         return;
       }
 
@@ -115,7 +132,7 @@ const UserDashboard = () => {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'your_fallback_key', // This should be in frontend env or fetched from backend
         amount: order.amount,
         currency: order.currency,
-        name: 'AutoBook',
+        name: 'Vehigo',
         description: `Payment for ${booking.vehicle?.name}`,
         order_id: order.id,
         handler: async function (response) {
@@ -128,10 +145,10 @@ const UserDashboard = () => {
               bookingId: booking._id
             }, config);
             
-            alert('Payment Successful!');
+            showNotification('success', 'Payment Successful!');
             fetchBookings();
           } catch (err) {
-            alert('Payment Verification Failed');
+            showNotification('error', 'Payment Verification Failed');
           }
         },
         prefill: {
@@ -146,7 +163,7 @@ const UserDashboard = () => {
 
     } catch (error) {
       console.error(error);
-      alert('Error initiating payment');
+      showNotification('error', 'Error initiating payment');
     }
   };
 
@@ -232,6 +249,16 @@ const UserDashboard = () => {
                         <p className="text-gray-500 text-sm mb-4">
                           {new Date(booking.pickupDate).toLocaleDateString()} to {new Date(booking.returnDate).toLocaleDateString()}
                         </p>
+                        {booking.bookingStatus === 'Cancelled' && booking.rejectionReason && (
+                          <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl text-xs flex gap-2.5 items-start max-w-xl animate-fadeIn">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold text-amber-950 uppercase tracking-wider text-[10px] mb-0.5">Mistake in documents / details:</p>
+                              <p className="font-semibold text-gray-800 mb-1 leading-normal">"{booking.rejectionReason}"</p>
+                              <p className="text-[10px] text-amber-700 font-medium">Please upload correct documents and submit a new booking request.</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex flex-wrap gap-4 items-center justify-between border-t border-gray-50 pt-4">
@@ -312,6 +339,42 @@ const UserDashboard = () => {
 
         </div>
       </div>
+
+      {/* Custom Notification Popup */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[9999] max-w-sm bg-gray-900 text-white py-3 px-4 rounded-xl shadow-xl flex items-center justify-between gap-4 text-xs font-semibold">
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
+      {/* Custom Confirmation Dialog */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-gray-100 text-center">
+            <h3 className="font-bold text-gray-900 text-base mb-2">{confirmModal.title}</h3>
+            <p className="text-xs text-gray-500 mb-5 leading-normal">{confirmModal.message}</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+                className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs cursor-pointer"
+              >
+                No, Keep
+              </button>
+              <button 
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal({ ...confirmModal, isOpen: false });
+                }} 
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-md shadow-blue-500/10"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

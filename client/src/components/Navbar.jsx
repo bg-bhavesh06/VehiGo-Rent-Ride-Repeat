@@ -19,7 +19,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2">
               <Car className="h-8 w-8 text-primary-600" />
-              <span className="font-bold text-xl text-dark-900">AutoBook</span>
+              <span className="font-bold text-xl text-dark-900">Vehigo</span>
             </Link>
           </div>
           

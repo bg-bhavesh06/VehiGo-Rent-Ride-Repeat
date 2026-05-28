@@ -19,6 +19,7 @@ const AIChatBot = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -88,7 +89,7 @@ const AIChatBot = () => {
       // Set a nice default welcome message
       const defaultWelcome = {
         role: 'assistant',
-        content: `👋 **Hello! I am AutoBook AI, your dedicated Vehicle Rental Assistant.** 
+        content: `👋 **Hello! I am Vehigo AI, your dedicated Vehicle Rental Assistant.** 
 
 How can I help you today? You can ask me about:
 - Available **cars, bikes, or SUVs** in our database
@@ -167,10 +168,13 @@ Feel free to type a question below or tap one of the suggested questions!`
   };
 
   const handleClearHistory = () => {
-    if (window.confirm("Are you sure you want to clear your conversation history?")) {
-      const defaultWelcome = {
-        role: 'assistant',
-        content: `👋 **Hello! I am AutoBook AI, your dedicated Vehicle Rental Assistant.** 
+    setConfirmOpen(true);
+  };
+
+  const confirmClearHistory = () => {
+    const defaultWelcome = {
+      role: 'assistant',
+      content: `👋 **Hello! I am Vehigo AI, your dedicated Vehicle Rental Assistant.** 
 
 How can I help you today? You can ask me about:
 - Available **cars, bikes, or SUVs** in our database
@@ -178,11 +182,11 @@ How can I help you today? You can ask me about:
 - How to **book** a vehicle on our platform
 
 Feel free to type a question below or tap one of the suggested questions!`
-      };
-      setMessages([defaultWelcome]);
-      sessionStorage.setItem('auto_book_ai_chat', JSON.stringify([defaultWelcome]));
-      setDemoMode(false);
-    }
+    };
+    setMessages([defaultWelcome]);
+    sessionStorage.setItem('auto_book_ai_chat', JSON.stringify([defaultWelcome]));
+    setDemoMode(false);
+    setConfirmOpen(false);
   };
 
   const suggestionChips = [
@@ -266,8 +270,7 @@ Feel free to type a question below or tap one of the suggested questions!`
             </div>
             <div>
               <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                AutoBook Assistant
-                <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-normal">Groq</span>
+                Vehigo Assistant
               </h3>
               <p className="text-[11px] text-primary-100">Live Vehicle Rental Guide</p>
             </div>
@@ -383,6 +386,30 @@ Feel free to type a question below or tap one of the suggested questions!`
             <Send className="h-4.5 w-4.5" />
           </button>
         </div>
+        
+        {/* Custom Clear History Confirmation Dialog */}
+        {confirmOpen && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-5 w-full max-w-[280px] shadow-2xl border border-gray-100 text-center">
+              <h4 className="font-bold text-gray-900 text-sm mb-2">Clear History?</h4>
+              <p className="text-xs text-gray-500 mb-5 leading-relaxed">Are you sure you want to clear your conversation history? This action cannot be undone.</p>
+              <div className="flex gap-2.5">
+                <button 
+                  onClick={() => setConfirmOpen(false)}
+                  className="flex-grow py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-[11px] transition cursor-pointer"
+                >
+                  No, Keep
+                </button>
+                <button 
+                  onClick={confirmClearHistory}
+                  className="flex-grow py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[11px] transition cursor-pointer shadow-md shadow-indigo-500/20"
+                >
+                  Yes, Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

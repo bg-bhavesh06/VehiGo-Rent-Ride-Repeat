@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle, MessageCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const OwnerVehicleCard = ({ v, handleToggleAvailability, handleDeleteVehicle }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -118,6 +118,33 @@ const OwnerDashboard = () => {
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  
+  const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('Aadhaar Card mistake (blurred/unreadable image)');
+  const [customRejectionReason, setCustomRejectionReason] = useState('');
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => prev && prev.message === message ? null : prev);
+    }, 5000);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancellingBookingId) return;
+    const finalReason = rejectionReason === 'Other' ? customRejectionReason : rejectionReason;
+    if (!finalReason.trim()) {
+      showNotification('error', 'Please provide a cancellation reason.');
+      return;
+    }
+    await updateBookingStatus(cancellingBookingId, 'Cancelled', finalReason);
+    setCancellationModalOpen(false);
+    setCancellingBookingId(null);
+    setCustomRejectionReason('');
+  };
   
   // Add Vehicle Form State
   const [formData, setFormData] = useState({
@@ -152,9 +179,10 @@ const OwnerDashboard = () => {
       const { data } = await axios.put('/api/auth/profile', formData, config);
       
       updateUser(data);
+      showNotification('success', 'Profile picture updated successfully!');
     } catch (error) {
       console.error(error);
-      alert('Error updating profile picture');
+      showNotification('error', 'Error updating profile picture');
     }
   };
 
@@ -209,7 +237,7 @@ const OwnerDashboard = () => {
     e.preventDefault();
 
     if (images.length < 3) {
-      alert('Please upload a minimum of 3 photos for the vehicle.');
+      showNotification('warning', 'Please upload a minimum of 3 photos for the vehicle.');
       return;
     }
 
@@ -225,6 +253,7 @@ const OwnerDashboard = () => {
       
       setActiveTab('vehicles');
       fetchData();
+      showNotification('success', 'Vehicle successfully listed!');
       // Reset form
       setFormData({
         name: '', brand: '', type: 'Car', model: '', vehicleNumber: '', 
@@ -232,31 +261,39 @@ const OwnerDashboard = () => {
       });
       setImages([]);
     } catch (error) {
-      alert(error.response?.data?.message || 'Error adding vehicle');
+      showNotification('error', error.response?.data?.message || 'Error adding vehicle');
     }
     setAddLoading(false);
   };
 
-  const updateBookingStatus = async (id, status) => {
+  const updateBookingStatus = async (id, status, rejectionReason = '') => {
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      await axios.put(`/api/bookings/${id}/status`, { status }, config);
+      await axios.put(`/api/bookings/${id}/status`, { status, rejectionReason }, config);
       fetchData();
+      showNotification('success', `Booking has been successfully ${status.toLowerCase()}!`);
     } catch (error) {
       console.error(error);
+      showNotification('error', error.response?.data?.message || 'Error updating booking');
     }
   };
 
-  const handleDeleteVehicle = async (id) => {
-    if (window.confirm('Are you sure you want to delete this vehicle?')) {
-      try {
-        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        await axios.delete(`/api/vehicles/${id}`, config);
-        fetchData();
-      } catch (error) {
-        alert(error.response?.data?.message || 'Error deleting vehicle');
+  const handleDeleteVehicle = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Listed Vehicle',
+      message: 'Are you sure you want to delete this vehicle listing? This action cannot be undone and will cancel any active bookings associated with it.',
+      onConfirm: async () => {
+        try {
+          const config = { headers: { Authorization: `Bearer ${user.token}` } };
+          await axios.delete(`/api/vehicles/${id}`, config);
+          fetchData();
+          showNotification('success', 'Vehicle deleted successfully.');
+        } catch (error) {
+          showNotification('error', error.response?.data?.message || 'Error deleting vehicle');
+        }
       }
-    }
+    });
   };
 
   const handleToggleAvailability = async (id, currentStatus) => {
@@ -264,8 +301,9 @@ const OwnerDashboard = () => {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       await axios.put(`/api/vehicles/${id}`, { availabilityStatus: !currentStatus }, config);
       fetchData();
+      showNotification('success', `Vehicle availability marked as ${!currentStatus ? 'available' : 'unavailable'}.`);
     } catch (error) {
-      alert(error.response?.data?.message || 'Error updating vehicle');
+      showNotification('error', error.response?.data?.message || 'Error updating vehicle');
     }
   };
 
@@ -520,7 +558,16 @@ const OwnerDashboard = () => {
                         </td>
                         <td className="p-4 flex gap-2">
                           {b.bookingStatus !== 'Cancelled' && b.bookingStatus !== 'Completed' && (
-                            <button onClick={() => updateBookingStatus(b._id, 'Cancelled')} className="text-red-600 hover:text-red-800"><XCircle className="h-5 w-5" /></button>
+                            <button 
+                              onClick={() => {
+                                setCancellingBookingId(b._id);
+                                setCancellationModalOpen(true);
+                              }} 
+                              className="text-red-600 hover:text-red-800 cursor-pointer"
+                              title="Reject / Cancel Booking"
+                            >
+                              <XCircle className="h-5 w-5" />
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -543,6 +590,114 @@ const OwnerDashboard = () => {
 
         </div>
       </div>
+
+      {/* Cancellation/Rejection Modal */}
+      {cancellationModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
+              <h3 className="text-base font-bold text-gray-900">Reject Booking</h3>
+              <button 
+                onClick={() => {
+                  setCancellationModalOpen(false);
+                  setCancellingBookingId(null);
+                }} 
+                className="text-gray-400 hover:text-gray-600 transition cursor-pointer text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p className="text-xs text-gray-500 mb-4 leading-normal">
+              Select the document mistake or cancellation reason to show the renter.
+            </p>
+            
+            <div className="space-y-3">
+              <div>
+                <select 
+                  value={rejectionReason} 
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs bg-white"
+                >
+                  <option value="Aadhaar Card mistake (blurred/unreadable image)">Aadhaar Card mistake (blurred/unreadable image)</option>
+                  <option value="Aadhaar Card mistake (name doesn't match profile)">Aadhaar Card mistake (name doesn't match profile)</option>
+                  <option value="Driving License mistake (expired license)">Driving License mistake (expired license)</option>
+                  <option value="Driving License mistake (blurred/unreadable image)">Driving License mistake (blurred/unreadable image)</option>
+                  <option value="Incorrect/invalid document uploaded">Incorrect/invalid document uploaded</option>
+                  <option value="Owner unavailable (vehicle maintenance)">Owner unavailable (vehicle maintenance)</option>
+                  <option value="Other">Other (Enter custom reason)</option>
+                </select>
+              </div>
+              
+              {rejectionReason === 'Other' && (
+                <div>
+                  <textarea 
+                    rows="3" 
+                    value={customRejectionReason}
+                    onChange={(e) => setCustomRejectionReason(e.target.value)}
+                    placeholder="Describe the reason..." 
+                    className="w-full p-2.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-2 mt-5 text-xs">
+              <button 
+                onClick={() => {
+                  setCancellationModalOpen(false);
+                  setCancellingBookingId(null);
+                }} 
+                className="flex-grow py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmCancel}
+                className="flex-grow py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg cursor-pointer text-center shadow-md shadow-red-500/10"
+              >
+                Reject Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Notification Popup */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[9999] max-w-sm bg-gray-900 text-white py-3 px-4 rounded-xl shadow-xl flex items-center justify-between gap-4 text-xs font-semibold">
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
+      {/* Custom Confirmation Dialog */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-gray-100 text-center">
+            <h3 className="font-bold text-gray-900 text-base mb-2">{confirmModal.title}</h3>
+            <p className="text-xs text-gray-500 mb-5 leading-normal">{confirmModal.message}</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+                className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs cursor-pointer"
+              >
+                No, Keep
+              </button>
+              <button 
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal({ ...confirmModal, isOpen: false });
+                }} 
+                className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-md shadow-red-500/10"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

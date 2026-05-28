@@ -34,6 +34,14 @@ const VehicleDetail = () => {
   
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => prev && prev.message === message ? null : prev);
+    }, 5000);
+  };
   
   // Booking Form State
   const [pickupDate, setPickupDate] = useState(null);
@@ -243,13 +251,13 @@ const VehicleDetail = () => {
         },
         (error) => {
           setGeoLoading(false);
-          alert("Error getting location. Showing vehicle location only.");
+          showNotification('error', "Error getting location. Showing vehicle location only.");
           setShowDirectionMap(true);
         }
       );
     } else {
       setGeoLoading(false);
-      alert("Geolocation is not supported by your browser");
+      showNotification('error', "Geolocation is not supported by your browser");
       setShowDirectionMap(true);
     }
   };
@@ -408,9 +416,9 @@ const VehicleDetail = () => {
       
     } catch (err) {
       if (err.response?.status === 409 && err.response?.data?.conflictDetails) {
-        alert("Booking Conflict!\n\n" + err.response.data.conflictDetails.smartMessage);
+        showNotification('warning', "Booking Conflict!\n\n" + err.response.data.conflictDetails.smartMessage);
       } else {
-        alert(err.response?.data?.message || 'Error creating booking');
+        showNotification('error', err.response?.data?.message || 'Error creating booking');
       }
     }
     setBookingLoading(false);
@@ -877,6 +885,14 @@ const VehicleDetail = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Custom Notification Popup */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[9999] max-w-sm bg-gray-900 text-white py-3 px-4 rounded-xl shadow-xl flex items-center justify-between gap-4 text-xs font-semibold">
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
         </div>
       )}
 

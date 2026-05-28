@@ -2,6 +2,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
+const ChatRoom = require('../models/ChatRoom');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -96,7 +97,6 @@ const verifyPayment = async (req, res) => {
         if (booking.bookingStatus === 'Pending') {
            booking.bookingStatus = 'Confirmed';
 
-           const ChatRoom = require('../models/ChatRoom');
            await ChatRoom.findOneAndUpdate(
              { userId: booking.user, vehicleId: booking.vehicle },
              { 

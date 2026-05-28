@@ -1,6 +1,7 @@
-const Booking = require('../models/Booking');
-const Vehicle = require('../models/Vehicle');
-const cloudinary = require('../config/cloudinary');
+const Booking = require("../models/Booking");
+const Vehicle = require("../models/Vehicle");
+const cloudinary = require("../config/cloudinary");
+const ChatRoom = require("../models/ChatRoom");
 
 // @desc    Create new booking
 // @route   POST /api/bookings
@@ -11,7 +12,7 @@ const createBooking = async (req, res) => {
 
     const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) {
-      return res.status(404).json({ message: 'Vehicle not found' });
+      return res.status(404).json({ message: "Vehicle not found" });
     }
 
     const newStart = new Date(pickupDate);
@@ -20,7 +21,7 @@ const createBooking = async (req, res) => {
     // Fetch all existing active bookings for this vehicle
     const existingBookings = await Booking.find({
       vehicle: vehicleId,
-      bookingStatus: { $in: ['Confirmed'] }
+      bookingStatus: { $in: ["Confirmed"] },
     }).sort({ pickupDate: 1 });
 
     let conflict = false;
@@ -34,8 +35,8 @@ const createBooking = async (req, res) => {
       // - New end date is BEFORE or exactly AT booked start date
       // OR
       // - New start date is AFTER or exactly AT booked end date
-      const isSafe = (newEnd <= bStart) || (newStart >= bEnd);
-      
+      const isSafe = newEnd <= bStart || newStart >= bEnd;
+
       if (!isSafe) {
         conflict = true;
         conflictBooking = b;
@@ -46,45 +47,43 @@ const createBooking = async (req, res) => {
     if (conflict) {
       const cStart = new Date(conflictBooking.pickupDate);
       const cEnd = new Date(conflictBooking.returnDate);
-      
+
       const beforeDate = new Date(cStart);
       beforeDate.setDate(beforeDate.getDate() - 1);
-      
+
       const afterDate = new Date(cEnd);
       afterDate.setDate(afterDate.getDate() + 1);
 
-      const options = { year: 'numeric', month: 'short', day: 'numeric' };
-      
+      const options = { year: "numeric", month: "short", day: "numeric" };
+
       return res.status(409).json({
-        message: 'Conflict',
+        message: "Conflict",
         conflictDetails: {
           conflictStart: cStart,
           conflictEnd: cEnd,
           availableBefore: beforeDate,
           availableAfter: afterDate,
-          smartMessage: `Sorry! This vehicle is already booked from ${cStart.toLocaleDateString('en-US', options)} to ${cEnd.toLocaleDateString('en-US', options)}.\n\nYou can book:\n✅ Before conflict — upto ${beforeDate.toLocaleDateString('en-US', options)}\n✅ After conflict — from ${afterDate.toLocaleDateString('en-US', options)} onwards`
-        }
+          smartMessage: `Sorry! This vehicle is already booked from ${cStart.toLocaleDateString("en-US", options)} to ${cEnd.toLocaleDateString("en-US", options)}`,
+        },
       });
     }
 
     let documentUrls = [];
     if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'bike_rental/documents' },
-          (error, result) => {
-            if (!error && result) {
-              documentUrls.push(result.secure_url);
+      const uploadPromises = req.files.map((file) => {
+        return new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "bike_rental/documents" },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result.secure_url);
             }
-          }
-        );
-        uploadStream.end(file.buffer);
-      }
+          );
+          uploadStream.end(file.buffer);
+        });
+      });
+      documentUrls = await Promise.all(uploadPromises);
     }
-
-    // Advance payment is 50%
-    const advanceAmount = totalAmount / 2;
-    const remainingAmount = totalAmount - advanceAmount;
 
     const booking = await Booking.create({
       user: req.user._id,
@@ -93,7 +92,7 @@ const createBooking = async (req, res) => {
       pickupDate: newStart,
       returnDate: newEnd,
       totalAmount,
-      remainingAmount,
+      remainingAmount: totalAmount,
       documents: documentUrls,
     });
 
@@ -109,8 +108,8 @@ const createBooking = async (req, res) => {
 const getUserBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ user: req.user._id })
-      .populate('vehicle', 'name brand images vehicleNumber')
-      .populate('owner', 'name email');
+      .populate("vehicle", "name brand images vehicleNumber")
+      .populate("owner", "name email");
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -123,8 +122,8 @@ const getUserBookings = async (req, res) => {
 const getOwnerBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ owner: req.user._id })
-      .populate('vehicle', 'name brand images vehicleNumber')
-      .populate('user', 'name email');
+      .populate("vehicle", "name brand images vehicleNumber")
+      .populate("user", "name email");
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -139,28 +138,32 @@ const cancelBooking = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: "Booking not found" });
     }
 
     // Check if user is the one who booked or the owner of the vehicle
-    if (booking.user.toString() !== req.user._id.toString() && booking.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
+    if (
+      booking.user.toString() !== req.user._id.toString() &&
+      booking.owner.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to cancel this booking" });
     }
 
-    booking.bookingStatus = 'Cancelled';
+    booking.bookingStatus = "Cancelled";
     await booking.save();
 
     // Update ChatRoom if any
-    const ChatRoom = require('../models/ChatRoom');
     await ChatRoom.findOneAndUpdate(
       { bookingId: booking._id },
-      { 
-        isBooked: false, 
-        bookingId: null 
-      }
+      {
+        isBooked: false,
+        bookingId: null,
+      },
     );
 
-    res.json({ message: 'Booking cancelled successfully', booking });
+    res.json({ message: "Booking cancelled successfully", booking });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -171,29 +174,31 @@ const cancelBooking = async (req, res) => {
 // @access  Private/Owner
 const updateBookingStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, rejectionReason } = req.body;
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: "Booking not found" });
     }
 
     if (booking.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ message: "Not authorized" });
     }
 
     booking.bookingStatus = status;
+    if (rejectionReason) {
+      booking.rejectionReason = rejectionReason;
+    }
     await booking.save();
 
     // Update ChatRoom if cancelled or completed
-    if (status === 'Cancelled' || status === 'Completed') {
-      const ChatRoom = require('../models/ChatRoom');
+    if (status === "Cancelled" || status === "Completed") {
       await ChatRoom.findOneAndUpdate(
         { bookingId: booking._id },
-        { 
-          isBooked: false, 
-          bookingId: null 
-        }
+        {
+          isBooked: false,
+          bookingId: null,
+        },
       );
     }
 
@@ -211,9 +216,10 @@ const getVehicleBookedDates = async (req, res) => {
     const { vehicleId } = req.params;
     const bookings = await Booking.find({
       vehicle: vehicleId,
-      bookingStatus: { $in: ['Confirmed'] }
-    }).select('pickupDate returnDate -_id');
-    
+      bookingStatus: { $in: ["Confirmed"] },
+      returnDate: { $gt: new Date() },
+    }).select("pickupDate returnDate -_id");
+
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });

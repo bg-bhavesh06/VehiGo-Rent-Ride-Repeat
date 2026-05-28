@@ -22,6 +22,7 @@ const bookingSchema = new mongoose.Schema({
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
   documents: [{ type: String }], // Optional: documents specifically uploaded for this booking
+  rejectionReason: { type: String }, // Reason for booking rejection/cancellation
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

@@ -1,5 +1,6 @@
 const Vehicle = require('../models/Vehicle');
 const cloudinary = require('../config/cloudinary');
+const Booking = require('../models/Booking');
 
 // Helper to upload buffer to cloudinary
 const uploadToCloudinary = (fileBuffer) => {
@@ -95,15 +96,13 @@ const getVehicles = async (req, res) => {
 
     const vehicles = await Vehicle.find(query).populate('owner', 'name email').lean();
     
-    const Booking = require('../models/Booking');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     for (let vehicle of vehicles) {
       const activeBookings = await Booking.find({
         vehicle: vehicle._id,
         bookingStatus: { $in: ['Pending', 'Confirmed'] },
-        returnDate: { $gte: today }
+        returnDate: { $gt: now }
       }).select('pickupDate returnDate').sort({ pickupDate: 1 });
       
       vehicle.activeBookings = activeBookings;
@@ -199,15 +198,13 @@ const getOwnerVehicles = async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ owner: req.user._id }).sort({ createdAt: -1 }).lean();
     
-    const Booking = require('../models/Booking');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     for (let vehicle of vehicles) {
       const activeBookings = await Booking.find({
         vehicle: vehicle._id,
         bookingStatus: { $in: ['Pending', 'Confirmed'] },
-        returnDate: { $gte: today }
+        returnDate: { $gt: now }
       }).select('pickupDate returnDate').sort({ pickupDate: 1 });
       
       vehicle.activeBookings = activeBookings;

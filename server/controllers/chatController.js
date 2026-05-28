@@ -1,6 +1,7 @@
 const ChatRoom = require('../models/ChatRoom');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Booking = require('../models/Booking');
 
 const getOwnerChatRooms = async (req, res) => {
   try {
@@ -26,8 +27,6 @@ const getUserChatRooms = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-const Booking = require('../models/Booking');
 
 const startOrGetChatRoom = async (req, res) => {
   try {

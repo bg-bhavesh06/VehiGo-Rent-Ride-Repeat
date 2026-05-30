@@ -89,7 +89,7 @@ const AIChatBot = () => {
       // Set a nice default welcome message
       const defaultWelcome = {
         role: 'assistant',
-        content: `👋 **Hello! I am Vehigo AI, your dedicated Vehicle Rental Assistant.** 
+        content: `👋 **Hello! I am RidHub AI, your dedicated Vehicle Rental Assistant.** 
 
 How can I help you today? You can ask me about:
 - Available **cars, bikes, or SUVs** in our database
@@ -174,7 +174,7 @@ Feel free to type a question below or tap one of the suggested questions!`
   const confirmClearHistory = () => {
     const defaultWelcome = {
       role: 'assistant',
-      content: `👋 **Hello! I am Vehigo AI, your dedicated Vehicle Rental Assistant.** 
+      content: `👋 **Hello! I am RidHub AI, your dedicated Vehicle Rental Assistant.** 
 
 How can I help you today? You can ask me about:
 - Available **cars, bikes, or SUVs** in our database
@@ -270,7 +270,7 @@ Feel free to type a question below or tap one of the suggested questions!`
             </div>
             <div>
               <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                Vehigo Assistant
+                RidHub Assistant
               </h3>
               <p className="text-[11px] text-primary-100">Live Vehicle Rental Guide</p>
             </div>

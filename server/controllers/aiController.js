@@ -65,7 +65,7 @@ const getAIChatResponse = async (req, res) => {
     }
 
     // Define System Instructions (Strict guardrails and vehicle listing context)
-    const systemPrompt = `You are "Vehigo AI", a helpful, professional, and smart AI customer assistant for our premium multi-vehicle rental platform.
+    const systemPrompt = `You are "RidHub AI", a helpful, professional, and smart AI customer assistant for our premium multi-vehicle rental platform.
 Our platform allows owners to list their vehicles (including cars, bikes, SUVs, scooters, and more) and allows customers to rent them easily.
 
 Here is the real-time, live list of available vehicles in our database and their booked/reserved dates:
@@ -73,7 +73,7 @@ ${vehicleSummaries || 'No vehicles are currently listed.'}
 
 YOUR STRICT INSTRUCTIONS AND BOUNDARIES:
 1. You MUST only answer questions related to vehicles, vehicle rentals, booking procedures, pricing, vehicle specifications, locations, and platform support.
-2. If the user asks about ANY topic completely unrelated to vehicle rentals, automotive support, or our platform (for example: coding recipes, writing code, cooking meals, math formulas, general historical events, or academic subjects), you must politely and briefly refuse. Tell them you are only programmed to help with renting cars, bikes, and other vehicles on Vehigo.
+2. If the user asks about ANY topic completely unrelated to vehicle rentals, automotive support, or our platform (for example: coding recipes, writing code, cooking meals, math formulas, general historical events, or academic subjects), you must politely and briefly refuse. Tell them you are only programmed to help with renting cars, bikes, and other vehicles on RidHub.
 3. Be friendly, concise, and highly professional.
 4. Recommend specific vehicles from the list above when users ask for suggestions or inquire about cars/bikes in specific cities or price ranges.
 5. If someone asks for a vehicle at a specific location, match the "Location" field of the vehicles listed above (e.g., matching Vadodara, Mumbai, Pune, etc.).
@@ -145,7 +145,7 @@ function getFallbackResponse(userMessage, vehicles, bookingsByVehicle = {}) {
   const isOnTopic = onTopicKeywords.some(keyword => msg.includes(keyword));
   
   if (!isOnTopic && msg.length > 3) {
-    return "👋 I am Vehigo AI, your Vehicle Rental Assistant.\n\nI am only programmed to assist you with vehicle rentals, bookings, and inquiries. Please ask about our listed vehicles (cars, bikes, etc.) or how to book them!";
+    return "👋 I am RidHub AI, your Vehicle Rental Assistant.\n\nI am only programmed to assist you with vehicle rentals, bookings, and inquiries. Please ask about our listed vehicles (cars, bikes, etc.) or how to book them!";
   }
   
   // Format specific recommendations based on user query
@@ -158,7 +158,7 @@ function getFallbackResponse(userMessage, vehicles, bookingsByVehicle = {}) {
     matched = vehicles.slice(0, 3); // top 3
   }
   
-  let responseText = "👋 **Hello! I am Vehigo AI, your Vehicle Rental Assistant.**\n\n";
+  let responseText = "👋 **Hello! I am RidHub AI, your Vehicle Rental Assistant.**\n\n";
   responseText += "⚠️ *Demo Mode Notice: GROQ_API_KEY is not configured in `.env` yet.* However, here is real-time availability from our database:\n\n";
   
   if (vehicles.length === 0) {

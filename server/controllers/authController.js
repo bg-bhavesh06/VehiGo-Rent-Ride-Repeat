@@ -203,7 +203,7 @@ const forgotPassword = async (req, res) => {
     try {
       await sendEmail({
         email: user.email,
-        subject: 'RidHub Password Reset OTP',
+        subject: 'Vehigo Password Reset OTP',
         message
       });
       res.status(200).json({ message: 'OTP sent to email' });

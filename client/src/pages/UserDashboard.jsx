@@ -132,7 +132,7 @@ const UserDashboard = () => {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'your_fallback_key', // This should be in frontend env or fetched from backend
         amount: order.amount,
         currency: order.currency,
-        name: 'RidHub',
+        name: 'Vehigo',
         description: `Payment for ${booking.vehicle?.name}`,
         order_id: order.id,
         handler: async function (response) {

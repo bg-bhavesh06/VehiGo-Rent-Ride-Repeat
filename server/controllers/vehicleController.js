@@ -1,6 +1,5 @@
 const Vehicle = require('../models/Vehicle');
 const cloudinary = require('../config/cloudinary');
-const Booking = require('../models/Booking');
 
 // Helper to upload buffer to cloudinary
 const uploadToCloudinary = (fileBuffer) => {
@@ -96,6 +95,7 @@ const getVehicles = async (req, res) => {
 
     const vehicles = await Vehicle.find(query).populate('owner', 'name email').lean();
     
+    const Booking = require('../models/Booking');
     const now = new Date();
 
     for (let vehicle of vehicles) {
@@ -198,6 +198,7 @@ const getOwnerVehicles = async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ owner: req.user._id }).sort({ createdAt: -1 }).lean();
     
+    const Booking = require('../models/Booking');
     const now = new Date();
 
     for (let vehicle of vehicles) {

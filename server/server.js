@@ -1,42 +1,54 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectDB = require("./config/db");
+const path = require("path");
 
 // Connect Database
 connectDB();
 
 const app = express();
-const http = require('http');
-const { Server } = require('socket.io');
+const http = require("http");
+const { Server } = require("socket.io");
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*", // allow all in dev
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
-io.on('connection', (socket) => {
+// Pass io to request object if needed in controllers
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
-  socket.on('join_room', (data) => {
+  socket.on("join_room", (data) => {
     socket.join(data);
     console.log(`User with ID: ${socket.id} joined room: ${data}`);
   });
 
-  socket.on('join_user_room', (userId) => {
+  socket.on("join_user_room", (userId) => {
     socket.join(`user_${userId}`);
-    console.log(`User with ID: ${socket.id} joined personal room: user_${userId}`);
+    console.log(
+      `User with ID: ${socket.id} joined personal room: user_${userId}`,
+    );
   });
 
-  socket.on('send_message', (data) => {
-    socket.to(data.roomId).to(`user_${data.receiverId}`).emit('receive_message', data);
+  socket.on("send_message", (data) => {
+    socket
+      .to(data.roomId)
+      .to(`user_${data.receiverId}`)
+      .emit("receive_message", data);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User Disconnected', socket.id);
+  socket.on("disconnect", () => {
+    console.log("User Disconnected", socket.id);
   });
 });
 
@@ -45,17 +57,23 @@ app.use(cors());
 app.use(express.json());
 
 // Basic Route
-app.get('/', (req, res) => {
-  res.send('API is running...');
+app.get("/api/health", (req, res) => {
+  res.send("API is running...");
 });
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/vehicles', require('./routes/vehicleRoutes'));
-app.use('/api/bookings', require('./routes/bookingRoutes'));
-app.use('/api/payments', require('./routes/paymentRoutes'));
-app.use('/api/chats', require('./routes/chatRoutes'));
-app.use('/api/ai', require('./routes/aiRoutes'));
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/vehicles", require("./routes/vehicleRoutes"));
+app.use("/api/bookings", require("./routes/bookingRoutes"));
+app.use("/api/payments", require("./routes/paymentRoutes"));
+app.use("/api/chats", require("./routes/chatRoutes"));
+app.use("/api/ai", require("./routes/aiRoutes"));
+
+//Give the react File To The Fronted
+app.use(express.static(path.join(__dirname, "../client/dist")));
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+});
 
 const PORT = process.env.PORT || 5000;
 

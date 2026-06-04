@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Filter, MapPin, Settings, User, ChevronLeft, ChevronRight, X, Navigation } from 'lucide-react';
+import { Search, Filter, MapPin, Settings, User, ChevronLeft, ChevronRight, X, Navigation, ChevronDown, ChevronUp } from 'lucide-react';
 import SmartLocationSearch from '../components/SmartLocationSearch';
 import VehicleMap from '../components/VehicleMap';
 
@@ -137,6 +137,11 @@ const VehicleListing = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [vehicles]);
 
   const showNotification = (type, message) => {
     setNotification({ type, message });
@@ -366,19 +371,34 @@ const VehicleListing = () => {
                 </div>
               </div>
             ) : (
-              <div className={hasSearchedLocation 
-                ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4 pb-8" 
-                : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-8"
-              }>
-                {vehicles.map((vehicle) => (
-                  <VehicleCard 
-                    key={vehicle._id} 
-                    vehicle={vehicle} 
-                    isHovered={hoveredVehicleId === vehicle._id}
-                    onHover={setHoveredVehicleId}
-                  />
-                ))}
-              </div>
+              <>
+                <div className={hasSearchedLocation 
+                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4" 
+                  : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6"
+                }>
+                  {vehicles.slice(0, visibleCount).map((vehicle) => (
+                    <VehicleCard 
+                      key={vehicle._id} 
+                      vehicle={vehicle} 
+                      isHovered={hoveredVehicleId === vehicle._id}
+                      onHover={setHoveredVehicleId}
+                    />
+                  ))}
+                </div>
+
+                {/* View More Button */}
+                {visibleCount < vehicles.length && (
+                  <div className="mt-10 mb-6 flex justify-center animate-fadeIn">
+                    <button
+                      onClick={() => setVisibleCount(prev => prev + 12)}
+                      className="px-8 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-primary-500/20 hover:shadow-primary-500/30 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 group cursor-pointer"
+                    >
+                      <ChevronDown className="h-4.5 w-4.5 group-hover:translate-y-0.5 transition-transform" />
+                      View More
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

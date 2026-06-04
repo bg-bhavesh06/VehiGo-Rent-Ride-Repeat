@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle, MessageCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { PlusCircle, List, Calendar, Settings, Activity, Upload, CheckCircle, XCircle, MessageCircle, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 const OwnerVehicleCard = ({ v, handleToggleAvailability, handleDeleteVehicle }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -120,6 +120,11 @@ const OwnerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [vehicles]);
   
   const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
@@ -405,16 +410,30 @@ const OwnerDashboard = () => {
                   No vehicles listed yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {vehicles.map(v => (
-                    <OwnerVehicleCard 
-                      key={v._id} 
-                      v={v} 
-                      handleToggleAvailability={handleToggleAvailability}
-                      handleDeleteVehicle={handleDeleteVehicle}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {vehicles.slice(0, visibleCount).map(v => (
+                      <OwnerVehicleCard 
+                        key={v._id} 
+                        v={v} 
+                        handleToggleAvailability={handleToggleAvailability}
+                        handleDeleteVehicle={handleDeleteVehicle}
+                      />
+                    ))}
+                  </div>
+                  {/* View More Button */}
+                  {visibleCount < vehicles.length && (
+                    <div className="mt-10 mb-2 flex justify-center animate-fadeIn">
+                      <button
+                        onClick={() => setVisibleCount(prev => prev + 12)}
+                        className="px-8 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-primary-500/20 hover:shadow-primary-500/30 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 group cursor-pointer"
+                      >
+                        <ChevronDown className="h-4.5 w-4.5 group-hover:translate-y-0.5 transition-transform" />
+                        View More
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

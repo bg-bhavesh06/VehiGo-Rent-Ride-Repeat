@@ -16,7 +16,7 @@ const Layout = () => {
       </main>
       {shouldShowChatBot && <AIChatBot />}
       <footer className="bg-dark-900 text-white py-6 text-center">
-        <p>&copy; {new Date().getFullYear()} RidHub Platform. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Vehigo Platform. All rights reserved.</p>
       </footer>
     </div>
   );

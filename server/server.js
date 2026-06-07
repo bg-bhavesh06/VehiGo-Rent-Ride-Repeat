@@ -1,8 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const connectDB = require("./config/db");
 const path = require("path");
+const connectDB = require("./config/db");
 
 // Connect Database
 connectDB();
@@ -69,10 +69,12 @@ app.use("/api/payments", require("./routes/paymentRoutes"));
 app.use("/api/chats", require("./routes/chatRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 
-//Give the react File To The Fronted
-app.use(express.static(path.join(__dirname, "../client/dist")));
+//server the React Frontend File..
+
+app.use(express.static(path.join(__dirname, "./client/disk")));
+
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+  res.sendFile(path.join(__dirname, "../client/disk/index.html"));
 });
 
 const PORT = process.env.PORT || 5000;

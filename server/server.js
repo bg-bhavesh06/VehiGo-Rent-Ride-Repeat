@@ -71,7 +71,7 @@ app.use("/api/ai", require("./routes/aiRoutes"));
 
 //server the React Frontend File..
 
-app.use(express.static(path.join(__dirname, "./client/disk")));
+app.use(express.static(path.join(__dirname, "../client/disk")));
 
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../client/disk/index.html"));

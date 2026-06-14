@@ -1,137 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Filter, MapPin, Settings, User, ChevronLeft, ChevronRight, X, Navigation, ChevronDown, ChevronUp } from 'lucide-react';
-import SmartLocationSearch from '../components/SmartLocationSearch';
-import VehicleMap from '../components/VehicleMap';
-
-const VehicleCard = ({ vehicle, isHovered, onHover }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const navigate = useNavigate();
-
-  const nextImage = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (vehicle.images && vehicle.images.length > 0) {
-      setCurrentImageIndex((prev) => (prev === vehicle.images.length - 1 ? 0 : prev + 1));
-    }
-  };
-
-  const prevImage = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (vehicle.images && vehicle.images.length > 0) {
-      setCurrentImageIndex((prev) => (prev === 0 ? vehicle.images.length - 1 : prev - 1));
-    }
-  };
-
-  const handleCardClick = () => {
-    navigate(`/vehicles/${vehicle._id}`);
-  };
-
-  return (
-    <div 
-      onClick={handleCardClick}
-      onMouseEnter={() => onHover && onHover(vehicle._id)}
-      onMouseLeave={() => onHover && onHover(null)}
-      className={`bg-white rounded-2xl overflow-hidden border transition-all duration-300 group block relative cursor-pointer ${isHovered ? 'shadow-xl border-primary-500 scale-[1.02]' : 'border-gray-100 hover:shadow-lg'}`}
-    >
-      <div className="relative h-48 overflow-hidden bg-gray-200">
-        {vehicle.images && vehicle.images.length > 0 ? (
-          <>
-            <img 
-              src={vehicle.images[currentImageIndex]} 
-              alt={vehicle.name} 
-              className="w-full h-full object-cover transition-transform duration-500" 
-            />
-            {vehicle.images.length > 1 && (
-              <>
-                <button 
-                  onClick={prevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-1 rounded-full shadow-md z-10 transition-colors"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button 
-                  onClick={nextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-1 rounded-full shadow-md z-10 transition-colors"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-                  {vehicle.images.map((_, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
-        )}
-        <div className="absolute top-3 left-3 z-10">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${vehicle.availabilityStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {vehicle.availabilityStatus ? 'Available' : 'Unavailable'}
-          </span>
-        </div>
-        <div className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-gray-900 shadow-sm">
-          ₹{vehicle.pricePerHour} <span className="text-gray-500 text-xs font-normal">/hr</span>
-        </div>
-      </div>
-      
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-bold text-gray-900 truncate">{vehicle.name}</h3>
-          <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-md font-medium">{vehicle.type}</span>
-        </div>
-        
-        <p className="text-gray-500 text-sm mb-3 line-clamp-1">{vehicle.description || `${vehicle.brand} ${vehicle.model}`}</p>
-        
-        {vehicle.activeBookings && vehicle.activeBookings.length > 0 && (
-          <div className="mb-3 relative" onClick={(e) => e.stopPropagation()}>
-            <details className="group">
-              <summary className="text-xs font-bold text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-100 cursor-pointer list-none flex justify-between items-center outline-none">
-                <span>Booked Dates ({vehicle.activeBookings.length})</span>
-                <span className="text-orange-500 group-open:rotate-180 transition-transform text-[10px]">▼</span>
-              </summary>
-              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white border border-gray-200 shadow-xl rounded-xl p-2 max-h-32 overflow-y-auto custom-scrollbar">
-                <div className="flex flex-col gap-1">
-                  {vehicle.activeBookings.map((b, i) => (
-                    <div key={i} className="text-xs font-medium text-orange-700 bg-orange-50 px-2 py-1.5 rounded">
-                      {new Date(b.pickupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} to {new Date(b.returnDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </details>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-y-2 mb-2">
-          <div className="flex items-center text-sm text-gray-600 gap-1.5">
-            <MapPin className="h-4 w-4 text-gray-400" />
-            <span className="truncate" title={vehicle.location}>{vehicle.location.split(',')[0]}</span>
-          </div>
-          <div className="flex items-center text-sm text-gray-600 gap-1.5">
-            <User className="h-4 w-4 text-gray-400" />
-            {vehicle.seatingCapacity} Seats
-          </div>
-          <div className="flex items-center text-sm text-gray-600 gap-1.5">
-            <Settings className="h-4 w-4 text-gray-400" />
-            {vehicle.fuelType}
-          </div>
-        </div>
-
-        <div className="w-full mt-4 py-2.5 bg-gray-50 group-hover:bg-primary-50 group-hover:text-primary-700 text-gray-700 font-bold border border-gray-100 group-hover:border-primary-100 rounded-xl transition-all duration-300 text-center text-sm">
-          View Details
-        </div>
-      </div>
-    </div>
-  );
-};
+import { Search, MapPin, ChevronDown } from 'lucide-react';
+import VehicleCard from './VehicleCard';
+import FilterSidebar from './FilterSidebar';
+import VehicleMap from '../../components/VehicleMap';
+import NotificationPopup from '../../components/ui/NotificationPopup';
 
 const VehicleListing = () => {
   const [vehicles, setVehicles] = useState([]);
@@ -279,59 +153,12 @@ const VehicleListing = () => {
     <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] w-full overflow-hidden bg-gray-50">
       
       {/* LEFT SIDEBAR - Filters */}
-      <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-4 flex flex-col gap-4 overflow-y-auto flex-shrink-0">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-          <h2 className="font-bold text-gray-900 text-base flex items-center gap-1.5">
-            <Filter className="h-4.5 w-4.5 text-primary-600" />
-            Search & Filters
-          </h2>
-          {(filters.location || filters.type) && (
-            <button 
-              onClick={clearSearch}
-              className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors"
-            >
-              Reset All
-            </button>
-          )}
-        </div>
-        {/* Location Smart Search */}
-        <div className="flex flex-col gap-1">
-          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Location</label>
-          <SmartLocationSearch 
-            initialValue={filters.location} 
-            onSearch={handleLocationSearch}
-            autoNavigate={false}
-            isSidebar={true}
-          />
-        </div>        {/* Other Filters */}
-        <div className="flex flex-col gap-1">
-          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Vehicle Type</label>
-          <div className="flex gap-2 w-full">
-            <div className="flex-1">
-              <select 
-                name="type"
-                value={filters.type}
-                onChange={handleFilterChange}
-                className="w-full py-2 px-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
-              >
-                <option value="">All Types</option>
-                <option value="Car">Car</option>
-                <option value="Bike">Bike</option>
-                <option value="SUV">SUV</option>
-              </select>
-            </div>
-            {(filters.location || filters.type) && (
-              <button 
-                onClick={clearSearch}
-                className="p-2 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-xl transition-colors flex items-center justify-center"
-                title="Clear Filters"
-              >
-                <X className="h-4.5 w-4.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <FilterSidebar 
+        filters={filters}
+        onLocationSearch={handleLocationSearch}
+        onFilterChange={handleFilterChange}
+        onClearSearch={clearSearch}
+      />
 
       {/* MAIN CONTENT AREA - List & Map */}
       <div className="flex-1 h-full flex flex-col lg:flex-row overflow-hidden">
@@ -435,12 +262,7 @@ const VehicleListing = () => {
       )}
 
       {/* Custom Notification Popup */}
-      {notification && (
-        <div className="fixed top-4 right-4 z-[9999] max-w-sm bg-gray-900 text-white py-3 px-4 rounded-xl shadow-xl flex items-center justify-between gap-4 text-xs font-semibold">
-          <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
-        </div>
-      )}
+      <NotificationPopup notification={notification} onClose={() => setNotification(null)} />
 
     </div>
   );

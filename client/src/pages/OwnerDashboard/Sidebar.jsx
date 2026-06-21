@@ -1,27 +1,55 @@
-import React from 'react';
-import { PlusCircle, List, Calendar, Activity, MessageCircle } from 'lucide-react';
-import AvatarUpload from '../../components/ui/AvatarUpload';
+import React from "react";
+import {
+  PlusCircle,
+  List,
+  Calendar,
+  Activity,
+  MessageCircle,
+} from "lucide-react";
+import AvatarUpload from "../../components/ui/AvatarUpload";
 
-const Sidebar = ({ user, activeTab, setActiveTab, totalUnreadCount, onAvatarChange }) => {
+const Sidebar = ({
+  user,
+  activeTab,
+  setActiveTab,
+  totalUnreadCount,
+  onAvatarChange,
+}) => {
   return (
     <div className="w-full md:w-64 flex-shrink-0">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <AvatarUpload user={user} onAvatarChange={onAvatarChange} accountType="Owner Account" />
-        
+        <AvatarUpload
+          user={user}
+          onAvatarChange={onAvatarChange}
+          accountType="Owner Account"
+        />
+
         <nav className="space-y-2">
-          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'overview' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "overview" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}
+          >
             <Activity className="h-5 w-5" /> Overview
           </button>
-          <button onClick={() => setActiveTab('vehicles')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'vehicles' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+          <button
+            onClick={() => setActiveTab("vehicles")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "vehicles" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}
+          >
             <List className="h-5 w-5" /> My Vehicles
           </button>
-          <button onClick={() => setActiveTab('add_vehicle')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'add_vehicle' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+          <button
+            onClick={() => setActiveTab("add_vehicle")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "add_vehicle" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}
+          >
             <PlusCircle className="h-5 w-5" /> Add Vehicle
           </button>
-          <button onClick={() => setActiveTab('bookings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'bookings' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+          <button
+            onClick={() => setActiveTab("bookings")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "bookings" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}
+          >
             <Calendar className="h-5 w-5" /> Bookings
           </button>
-          <button onClick={() => setActiveTab('chats')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'chats' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+          {/* <button onClick={() => setActiveTab('chats')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'chats' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
             <div className="relative flex items-center justify-center">
               <MessageCircle className="h-5 w-5" />
               {totalUnreadCount > 0 && (
@@ -31,7 +59,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, totalUnreadCount, onAvatarChan
               )}
             </div>
             Chats
-          </button>
+          </button> */}
         </nav>
       </div>
     </div>

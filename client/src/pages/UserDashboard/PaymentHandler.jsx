@@ -19,15 +19,11 @@ export const initiatePayment = async (booking, user, axios, showNotification, fe
       return;
     }
 
-    // Calculate amount to pay (50% advance if pending, remaining if partial)
-    const amountToPay = booking.paymentStatus === 'Pending' ? booking.totalAmount / 2 : booking.remainingAmount;
-
     const config = { headers: { Authorization: `Bearer ${user.token}` } };
     
     // 1. Create Order
     const { data: order } = await axios.post('/api/payments/create-order', {
-      bookingId: booking._id,
-      amount: amountToPay
+      bookingId: booking._id
     }, config);
 
     // 2. Open Razorpay Checkout
@@ -51,7 +47,7 @@ export const initiatePayment = async (booking, user, axios, showNotification, fe
           showNotification('success', 'Payment Successful!');
           fetchBookings();
         } catch (err) {
-          showNotification('error', 'Payment Verification Failed');
+          showNotification('error', err.response?.data?.message || 'Payment Verification Failed');
         }
       },
       prefill: {
@@ -66,6 +62,6 @@ export const initiatePayment = async (booking, user, axios, showNotification, fe
 
   } catch (error) {
     console.error(error);
-    showNotification('error', 'Error initiating payment');
+    showNotification('error', error.response?.data?.message || 'Error initiating payment');
   }
 };

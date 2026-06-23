@@ -242,9 +242,8 @@ const VehicleDetail = () => {
     try {
       const formData = new FormData();
       formData.append('vehicleId', vehicle._id);
-      formData.append('pickupDate', pickupDate);
-      formData.append('returnDate', returnDate);
-      formData.append('totalAmount', calculateTotalAmount());
+      formData.append('pickupDate', pickupDate.toISOString());
+      formData.append('returnDate', returnDate.toISOString());
       
       Array.from(documents).forEach(file => {
         formData.append('documents', file);

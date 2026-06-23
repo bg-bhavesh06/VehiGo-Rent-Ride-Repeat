@@ -2,25 +2,46 @@ const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
 const cloudinary = require('../config/cloudinary');
 
+const uploadDocumentToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'bike_rental/documents' },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+};
+
 // @desc    Create new booking
 // @route   POST /api/bookings
 // @access  Private/User
 const createBooking = async (req, res) => {
   try {
-    const { vehicleId, pickupDate, returnDate, totalAmount } = req.body;
+    const { vehicleId, pickupDate, returnDate } = req.body;
 
     const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
 
+    if (!vehicle.availabilityStatus) {
+      return res.status(400).json({ message: 'Vehicle is currently unavailable' });
+    }
+
     const newStart = new Date(pickupDate);
     const newEnd = new Date(returnDate);
+
+    if (!pickupDate || !returnDate || Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime()) || newEnd <= newStart) {
+      return res.status(400).json({ message: 'Please select a valid pickup and return date' });
+    }
 
     // Fetch all existing active bookings for this vehicle
     const existingBookings = await Booking.find({
       vehicle: vehicleId,
-      bookingStatus: { $in: ['Confirmed'] }
+      bookingStatus: { $in: ['Pending', 'Confirmed'] }
     }).sort({ pickupDate: 1 });
 
     let conflict = false;
@@ -69,22 +90,13 @@ const createBooking = async (req, res) => {
 
     let documentUrls = [];
     if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'bike_rental/documents' },
-          (error, result) => {
-            if (!error && result) {
-              documentUrls.push(result.secure_url);
-            }
-          }
-        );
-        uploadStream.end(file.buffer);
-      }
+      documentUrls = await Promise.all(
+        req.files.map((file) => uploadDocumentToCloudinary(file.buffer))
+      );
     }
 
-    // Advance payment is 50%
-    const advanceAmount = totalAmount / 2;
-    const remainingAmount = totalAmount - advanceAmount;
+    const diffHours = Math.ceil((newEnd - newStart) / (1000 * 60 * 60));
+    const totalAmount = diffHours * vehicle.pricePerHour;
 
     const booking = await Booking.create({
       user: req.user._id,
@@ -93,7 +105,7 @@ const createBooking = async (req, res) => {
       pickupDate: newStart,
       returnDate: newEnd,
       totalAmount,
-      remainingAmount,
+      remainingAmount: totalAmount,
       documents: documentUrls,
     });
 
@@ -214,7 +226,7 @@ const getVehicleBookedDates = async (req, res) => {
     const { vehicleId } = req.params;
     const bookings = await Booking.find({
       vehicle: vehicleId,
-      bookingStatus: { $in: ['Confirmed'] },
+      bookingStatus: { $in: ['Pending', 'Confirmed'] },
       returnDate: { $gt: new Date() }
     }).select('pickupDate returnDate -_id');
 

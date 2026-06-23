@@ -36,10 +36,11 @@ const registerUser = async (req, res) => {
   try {
     const Model = role === 'Owner' ? Owner : User;
 
-    const userExists = await Model.findOne({ email });
+    const userExists = await User.findOne({ email });
+    const ownerExists = await Owner.findOne({ email });
 
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+    if (userExists || ownerExists) {
+      return res.status(400).json({ message: 'Account already exists with this email' });
     }
 
     const salt = await bcrypt.genSalt(10);

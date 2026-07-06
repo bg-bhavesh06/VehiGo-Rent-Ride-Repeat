@@ -40,20 +40,35 @@ const createOrder = async (req, res) => {
     }
 
     if (booking.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to pay this booking" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to pay this booking" });
     }
 
-    if (booking.bookingStatus === "Cancelled" || booking.bookingStatus === "Completed") {
-      return res.status(400).json({ message: `Cannot pay a ${booking.bookingStatus.toLowerCase()} booking` });
+    if (
+      booking.bookingStatus === "Cancelled" ||
+      booking.bookingStatus === "Completed"
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: `Cannot pay a ${booking.bookingStatus.toLowerCase()} booking`,
+        });
     }
 
     if (await hasActiveBookingConflict(booking)) {
-      return res.status(409).json({ message: "This vehicle is already booked for the selected dates" });
+      return res
+        .status(409)
+        .json({
+          message: "This vehicle is already booked for the selected dates",
+        });
     }
 
     const amount = getPayableAmount(booking);
     if (amount <= 0) {
-      return res.status(400).json({ message: "No pending payment for this booking" });
+      return res
+        .status(400)
+        .json({ message: "No pending payment for this booking" });
     }
 
     const options = {
@@ -108,7 +123,9 @@ const verifyPayment = async (req, res) => {
       }
 
       if (payment.user.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: "Not authorized to verify this payment" });
+        return res
+          .status(403)
+          .json({ message: "Not authorized to verify this payment" });
       }
 
       if (payment.status === "Success") {
@@ -121,24 +138,43 @@ const verifyPayment = async (req, res) => {
       }
 
       if (payment.booking.toString() !== booking._id.toString()) {
-        return res.status(400).json({ message: "Payment order does not match booking" });
+        return res
+          .status(400)
+          .json({ message: "Payment order does not match booking" });
       }
 
       if (booking.user.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: "Not authorized to pay this booking" });
+        return res
+          .status(403)
+          .json({ message: "Not authorized to pay this booking" });
       }
 
-      if (booking.bookingStatus === "Cancelled" || booking.bookingStatus === "Completed") {
-        return res.status(400).json({ message: `Cannot pay a ${booking.bookingStatus.toLowerCase()} booking` });
+      if (
+        booking.bookingStatus === "Cancelled" ||
+        booking.bookingStatus === "Completed"
+      ) {
+        return res
+          .status(400)
+          .json({
+            message: `Cannot pay a ${booking.bookingStatus.toLowerCase()} booking`,
+          });
       }
 
       if (await hasActiveBookingConflict(booking)) {
-        return res.status(409).json({ message: "This vehicle is already booked for the selected dates" });
+        return res
+          .status(409)
+          .json({
+            message: "This vehicle is already booked for the selected dates",
+          });
       }
 
       const payableAmount = getPayableAmount(booking);
       if (Math.abs(payment.amount - payableAmount) > 0.01) {
-        return res.status(400).json({ message: "Payment amount no longer matches booking balance" });
+        return res
+          .status(400)
+          .json({
+            message: "Payment amount no longer matches booking balance",
+          });
       }
 
       if (payment) {
@@ -151,7 +187,10 @@ const verifyPayment = async (req, res) => {
       // Update Booking Status
       if (booking) {
         booking.paidAmount += payment.amount;
-        booking.remainingAmount = Math.max(booking.totalAmount - booking.paidAmount, 0);
+        booking.remainingAmount = Math.max(
+          booking.totalAmount - booking.paidAmount,
+          0,
+        );
 
         if (booking.remainingAmount <= 0) {
           booking.paymentStatus = "Completed";

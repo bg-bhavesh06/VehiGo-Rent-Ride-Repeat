@@ -1,24 +1,31 @@
 const Vehicle = require('../models/Vehicle');
 const Booking = require('../models/Booking');
 
-// @desc    Chat with Groq AI assistant about vehicles
-// @route   POST /api/ai/chat
-// @access  Public
+/**
+ * @desc    Chat with Groq AI assistant about vehicle specifications and availability
+ * @route   POST /api/ai/chat
+ * @access  Public
+ * 
+ * This controller retrieves the live list of vehicles and their confirmed bookings
+ * from MongoDB, injects them as real-time context into the LLM system prompt, and
+ * forwards the messages to the Groq API (or falls back to a smart local matching helper).
+ */
 const getAIChatResponse = async (req, res) => {
   try {
     const { messages } = req.body;
 
+    // Validate that the request contains chat history messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ message: 'Messages array is required.' });
     }
 
-    // Get last user message for fallback matching if needed
+    // Get the last user message to use for local fallback matching if needed
     const lastUserMessage = messages[messages.length - 1]?.content || '';
 
-    // Fetch all available vehicles from MongoDB to feed as context
+    // Fetch all available vehicles from MongoDB to feed as context for the AI
     const vehicles = await Vehicle.find({ availabilityStatus: true }).populate('owner', 'name').lean();
 
-    // Fetch confirmed bookings for these vehicles to determine booked dates
+    // Fetch all confirmed bookings for these active vehicles to detect overlapping dates
     const vehicleIds = vehicles.map(v => v._id);
     const bookings = await Booking.find({
       vehicle: { $in: vehicleIds },
@@ -48,11 +55,12 @@ const getAIChatResponse = async (req, res) => {
       return `- ${v.brand} ${v.name} (${v.type}): Price ₹${v.pricePerHour}/hr, Location: ${v.location}, Fuel: ${v.fuelType}, Seating: ${v.seatingCapacity} seats, Owner: ${v.owner?.name || 'Unknown'}. Description: ${v.description || 'N/A'}. ALREADY BOOKED DATES: [${bookingsFormatted || 'None'}]`;
     }).join('\n');
 
-    // Check if Groq API Key is available
+    // Retrieve the Groq API key from environment configuration
     const apiKey = process.env.GROQ_API_KEY;
 
+    // Check if Groq API Key is available. If missing, fall back to a demo mode
+    // with local heuristic matching to prevent application crash.
     if (!apiKey) {
-      // Graceful fallback when API key is missing (Demo Mode)
       console.warn("GROQ_API_KEY is not defined in environment variables. Falling back to local smart assistant responses.");
       const reply = getFallbackResponse(lastUserMessage, vehicles, bookingsByVehicle);
       return res.json({
@@ -66,10 +74,8 @@ const getAIChatResponse = async (req, res) => {
 
     // Define System Instructions (Strict guardrails and vehicle listing context)
     const systemPrompt = `You are "Vehigo AI", a helpful, professional, and smart AI customer assistant for our premium multi-vehicle rental platform.
-Our platform allows owners to list their vehicles (including cars, bikes, SUVs, scooters, and more) and allows customers to rent them easily.
-
-Here is the real-time, live list of available vehicles in our database and their booked/reserved dates:
-${vehicleSummaries || 'No vehicles are currently listed.'}
+            Our platform allows owners to list their vehicles (including cars, bikes, SUVs, scooters, and more) and allows customers to rent them easily.
+            Here is the real-time, live list of available vehicles in our database and their booked/reserved dates:${vehicleSummaries || 'No vehicles are currently listed.'}
 
 YOUR STRICT INSTRUCTIONS AND BOUNDARIES:
 1. You MUST only answer questions related to vehicles, vehicle rentals, booking procedures, pricing, vehicle specifications, locations, and platform support.

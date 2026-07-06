@@ -25,7 +25,7 @@ const Sidebar = ({
           >
             <Calendar className="h-5 w-5" /> My Bookings
           </button>
-          {/* <button
+          <button
             onClick={() => setActiveTab("chats")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "chats" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}
           >
@@ -38,7 +38,7 @@ const Sidebar = ({
               )}
             </div>
             Chats
-          </button> */}
+          </button>
           <button
             onClick={() => setActiveTab("profile")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "profile" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}

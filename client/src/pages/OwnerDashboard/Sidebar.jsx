@@ -49,17 +49,20 @@ const Sidebar = ({
           >
             <Calendar className="h-5 w-5" /> Bookings
           </button>
-          {/* <button onClick={() => setActiveTab('chats')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === 'chats' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+          <button
+            onClick={() => setActiveTab("chats")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeTab === "chats" ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"}`}
+          >
             <div className="relative flex items-center justify-center">
               <MessageCircle className="h-5 w-5" />
               {totalUnreadCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] flex items-center justify-center rounded-full px-1 shadow-sm border border-white">
-                  {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                  {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
                 </span>
               )}
             </div>
             Chats
-          </button> */}
+          </button>
         </nav>
       </div>
     </div>

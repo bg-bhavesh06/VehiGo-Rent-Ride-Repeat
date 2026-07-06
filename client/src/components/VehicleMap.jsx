@@ -105,10 +105,10 @@ const VehicleMap = ({
       // Create a custom HTML element for the marker pin
       const el = document.createElement('div');
       el.id = `marker-${vehicle._id}`;
-      el.className = `px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all whitespace-nowrap cursor-pointer ${
-        isHovered ? 'bg-gray-900 text-white border-gray-900 scale-110 z-50' : 'bg-white text-gray-900 border-gray-300'
+      el.className = `px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all duration-200 whitespace-nowrap cursor-pointer ${
+        isHovered ? 'bg-gray-900 text-white border-gray-900 z-50' : 'bg-white text-gray-900 border-gray-300'
       }`;
-      el.style.transform = 'translate(-50%, -100%)';
+      el.style.transform = isHovered ? 'translate(-50%, -100%) scale(1.1)' : 'translate(-50%, -100%) scale(1)';
       el.style.width = 'max-content';
       el.innerHTML = `₹${vehicle.pricePerHour}`;
 
@@ -174,9 +174,11 @@ const VehicleMap = ({
 
       const isHovered = hoveredVehicleId === vehicle._id;
       if (isHovered) {
-        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all whitespace-nowrap cursor-pointer bg-gray-900 text-white border-gray-900 scale-110 z-50';
+        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all duration-200 whitespace-nowrap cursor-pointer bg-gray-900 text-white border-gray-900 z-50';
+        el.style.transform = 'translate(-50%, -100%) scale(1.1)';
       } else {
-        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all whitespace-nowrap cursor-pointer bg-white text-gray-900 border-gray-300';
+        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all duration-200 whitespace-nowrap cursor-pointer bg-white text-gray-900 border-gray-300';
+        el.style.transform = 'translate(-50%, -100%) scale(1)';
       }
     });
   }, [hoveredVehicleId, vehicles]);

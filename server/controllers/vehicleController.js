@@ -1,5 +1,7 @@
 const Vehicle = require('../models/Vehicle');
 const cloudinary = require('../config/cloudinary');
+const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
+const geocodingClient = mbxGeocoding({ accessToken: process.env.MAP_TOKEN });
 
 // Helper to upload buffer to cloudinary
 const uploadToCloudinary = (fileBuffer) => {
@@ -35,6 +37,33 @@ const addVehicle = async (req, res) => {
       }
     }
 
+    let lat = Number(latitude);
+    let lon = Number(longitude);
+
+    if (location && (isNaN(lat) || isNaN(lon) || !lat || !lon)) {
+      try {
+        const geoResp = await geocodingClient
+          .forwardGeocode({
+            query: location,
+            limit: 1,
+          })
+          .send();
+
+        if (geoResp.body.features && geoResp.body.features.length > 0) {
+          const [featureLon, featureLat] = geoResp.body.features[0].center;
+          lat = featureLat;
+          lon = featureLon;
+        }
+      } catch (err) {
+        console.error("Geocoding failed inside addVehicle:", err);
+      }
+    }
+
+    if (isNaN(lat) || isNaN(lon)) {
+      lat = 20.5937; // Default fallback to center of India
+      lon = 78.9629;
+    }
+
     const vehicle = await Vehicle.create({
       name,
       brand,
@@ -46,11 +75,11 @@ const addVehicle = async (req, res) => {
       pricePerHour,
       location,
       description,
-      latitude: Number(latitude),
-      longitude: Number(longitude),
+      latitude: lat,
+      longitude: lon,
       locationCoordinates: {
         type: 'Point',
-        coordinates: [Number(longitude), Number(latitude)]
+        coordinates: [lon, lat]
       },
       images: imageUrls,
       owner: req.user._id,
@@ -148,13 +177,37 @@ const updateVehicle = async (req, res) => {
     }
 
     const updateData = { ...req.body };
+
+    // If location string is updated but coordinates aren't supplied, geocode it
+    if (updateData.location && (!updateData.latitude || !updateData.longitude)) {
+      try {
+        const geoResp = await geocodingClient
+          .forwardGeocode({
+            query: updateData.location,
+            limit: 1,
+          })
+          .send();
+
+        if (geoResp.body.features && geoResp.body.features.length > 0) {
+          const [featureLon, featureLat] = geoResp.body.features[0].center;
+          updateData.latitude = featureLat;
+          updateData.longitude = featureLon;
+        }
+      } catch (err) {
+        console.error("Geocoding failed inside updateVehicle:", err);
+      }
+    }
+
     if (updateData.latitude && updateData.longitude) {
       updateData.latitude = Number(updateData.latitude);
       updateData.longitude = Number(updateData.longitude);
-      updateData.locationCoordinates = {
-        type: 'Point',
-        coordinates: [updateData.longitude, updateData.latitude]
-      };
+      
+      if (!isNaN(updateData.latitude) && !isNaN(updateData.longitude)) {
+        updateData.locationCoordinates = {
+          type: 'Point',
+          coordinates: [updateData.longitude, updateData.latitude]
+        };
+      }
     }
 
     const updatedVehicle = await Vehicle.findByIdAndUpdate(

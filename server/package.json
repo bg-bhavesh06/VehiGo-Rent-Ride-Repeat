@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@mapbox/mapbox-sdk": "^0.16.2",
     "all": "^0.0.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",

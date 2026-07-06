@@ -31,6 +31,7 @@ const DirectionMap = ({
   // Card dragging positioning state
   const [dirPosition, setDirPosition] = useState({ x: 0, y: 0 });
   const [isDirDragging, setIsDirDragging] = useState(false);
+  const [mapError, setMapError] = useState(null);
   const dirDragRef = useRef({ isDragging: false, startX: 0, startY: 0, posX: 0, posY: 0 });
 
   const handleDirMouseDown = (e) => {
@@ -86,58 +87,67 @@ const DirectionMap = ({
   useEffect(() => {
     if (!isOpen || !mapContainerRef.current) return;
 
-    const initialLng = vehicle ? vehicle.longitude : 78.9629;
-    const initialLat = vehicle ? vehicle.latitude : 20.5937;
-
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [initialLng, initialLat],
-      zoom: 12,
-    });
-
-    mapRef.current = map;
-
-    // Define line layer source on map loaded
-    map.on('load', () => {
-      map.addSource('route', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: []
-          }
-        }
-      });
-
-      map.addLayer({
-        id: 'route',
-        type: 'line',
-        source: 'route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#059669',
-          'line-width': 5
-        }
-      });
-    });
-
-    // Handle canvas resizing correctly
-    setTimeout(() => {
-      map.resize();
-    }, 100);
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+    try {
+      if (!mapboxgl.accessToken) {
+        throw new Error("Mapbox API access token is missing.");
       }
-    };
+
+      const initialLng = vehicle ? vehicle.longitude : 78.9629;
+      const initialLat = vehicle ? vehicle.latitude : 20.5937;
+
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [initialLng, initialLat],
+        zoom: 12,
+      });
+
+      mapRef.current = map;
+
+      // Define line layer source on map loaded
+      map.on('load', () => {
+        map.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: []
+            }
+          }
+        });
+
+        map.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#059669',
+            'line-width': 5
+          }
+        });
+      });
+
+      // Handle canvas resizing correctly
+      setTimeout(() => {
+        map.resize();
+      }, 100);
+
+      return () => {
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+        }
+      };
+    } catch (err) {
+      console.error("Failed to initialize direction Mapbox GL map:", err);
+      setMapError(err.message || "Failed to load directions map.");
+    }
   }, [isOpen]);
 
   // Synchronize route lines, markers, and bounds fitting
@@ -285,7 +295,14 @@ const DirectionMap = ({
       
       {/* Map Area */}
       <div className="flex-1 relative bg-gray-100">
-        {vehicle?.latitude && vehicle?.longitude ? (
+        {mapError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
+            <MapPin className="h-8 w-8 text-red-500 mb-2 animate-bounce" />
+            <h4 className="text-sm font-bold text-gray-900">Map Unavailable</h4>
+            <p className="text-xs text-gray-500 mt-1 max-w-[280px]">{mapError}</p>
+            <span className="text-[9px] text-gray-400 font-mono mt-3">Configure VITE_MAPBOX_TOKEN in .env</span>
+          </div>
+        ) : vehicle?.latitude && vehicle?.longitude ? (
           <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-500 font-medium p-4 text-center">

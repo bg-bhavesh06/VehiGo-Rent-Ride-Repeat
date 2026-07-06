@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { MapPin } from 'lucide-react';
 
 /**
  * VehicleMap Component
@@ -16,7 +17,8 @@ const VehicleMap = ({
   onPinClick 
 }) => {
   const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
+  const [map, setMap] = useState(null);
+  const [mapError, setMapError] = useState(null);
   const markersRef = useRef({});
   const userMarkerRef = useRef(null);
 
@@ -27,32 +29,40 @@ const VehicleMap = ({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Use center coordinate query, else default to center of India [lng, lat]
-    const initialLng = center ? center[1] : 78.9629;
-    const initialLat = center ? center[0] : 20.5937;
-    const initialZoom = center ? 12 : 5;
+    try {
+      if (!mapboxgl.accessToken) {
+        throw new Error("Mapbox API access token is missing or not configured.");
+      }
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [initialLng, initialLat],
-      zoom: initialZoom,
-    });
+      // Use center coordinate query, else default to center of India [lng, lat]
+      const initialLng = center ? center[1] : 78.9629;
+      const initialLat = center ? center[0] : 20.5937;
+      const initialZoom = center ? 12 : 5;
 
-    // Add navigation controls (zoom buttons) in the bottom right corner
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+      const mapInstance = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [initialLng, initialLat],
+        zoom: initialZoom,
+      });
 
-    mapRef.current = map;
+      // Add navigation controls (zoom buttons) in the bottom right corner
+      mapInstance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
-    // Clean up map container resource on unmount
-    return () => {
-      map.remove();
-    };
+      setMap(mapInstance);
+
+      // Clean up map container resource on unmount
+      return () => {
+        mapInstance.remove();
+      };
+    } catch (err) {
+      console.error("Failed to initialize Mapbox GL:", err);
+      setMapError(err.message || "Failed to load interactive map.");
+    }
   }, []);
 
   // Update map camera center when search location changes
   useEffect(() => {
-    const map = mapRef.current;
     if (!map || !center) return;
 
     const [lat, lng] = center;
@@ -63,11 +73,10 @@ const VehicleMap = ({
         essential: true
       });
     }
-  }, [center]);
+  }, [map, center]);
 
   // Update user current position marker dot on the map
   useEffect(() => {
-    const map = mapRef.current;
     if (!map) return;
 
     // Remove existing user marker if user disables location search
@@ -86,11 +95,19 @@ const VehicleMap = ({
 
       userMarkerRef.current = userMarker;
     }
-  }, [userLocation]);
+  }, [map, userLocation]);
+
+  // Create mutable refs for the callbacks to prevent re-triggering marker creation
+  const onPinHoverRef = useRef(onPinHover);
+  const onPinClickRef = useRef(onPinClick);
+
+  useEffect(() => {
+    onPinHoverRef.current = onPinHover;
+    onPinClickRef.current = onPinClick;
+  }, [onPinHover, onPinClick]);
 
   // Handle building and rendering dynamic price markers for listings
   useEffect(() => {
-    const map = mapRef.current;
     if (!map) return;
 
     // Clear existing vehicle markers before re-rendering
@@ -105,16 +122,18 @@ const VehicleMap = ({
       // Create a custom HTML element for the marker pin
       const el = document.createElement('div');
       el.id = `marker-${vehicle._id}`;
-      el.className = `px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center transition-all whitespace-nowrap cursor-pointer ${
-        isHovered ? 'bg-gray-900 text-white border-gray-900 scale-110 z-50' : 'bg-white text-gray-900 border-gray-300'
+      // Removed transitions and scaling animations as per request to keep it simple and static
+      el.className = `px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center whitespace-nowrap cursor-pointer ${
+        isHovered ? 'bg-gray-900 text-white border-gray-900 z-50' : 'bg-white text-gray-900 border-gray-300'
       }`;
       el.style.transform = 'translate(-50%, -100%)';
+      el.style.width = 'max-content';
       el.innerHTML = `₹${vehicle.pricePerHour}`;
 
       // Custom HTML popup window containing vehicle details card
       const popup = new mapboxgl.Popup({ offset: [0, -15], closeButton: false })
         .setHTML(`
-          <div class="w-48 overflow-hidden rounded-xl bg-white border-0">
+          <div id="popup-card-${vehicle._id}" class="w-48 overflow-hidden rounded-xl bg-white border border-gray-100 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300">
             <div class="h-24 bg-gray-200 relative">
               ${vehicle.images && vehicle.images[0] 
                 ? `<img src="${vehicle.images[0]}" alt="${vehicle.name}" class="w-full h-full object-cover" />`
@@ -125,35 +144,15 @@ const VehicleMap = ({
               </div>
             </div>
             <div class="p-3">
-              <h4 class="font-bold text-sm text-gray-900 truncate mb-1">${vehicle.name}</h4>
+              <h4 class="font-bold text-sm text-gray-900 truncate mb-0.5">${vehicle.name}</h4>
               <p class="text-xs text-gray-500 mb-2 truncate">${vehicle.brand} • ${vehicle.type}</p>
-              <button 
-                id="btn-popup-${vehicle._id}"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-lg text-xs font-bold transition text-center block cursor-pointer"
-              >
-                View Details
-              </button>
+              <div class="text-[10px] text-blue-600 font-bold flex items-center gap-1">
+                <span>View Details</span>
+                <span>→</span>
+              </div>
             </div>
           </div>
         `);
-
-      // Bind routing redirection to detail pages when clicking popup CTA
-      popup.on('open', () => {
-        const btn = document.getElementById(`btn-popup-${vehicle._id}`);
-        if (btn) {
-          btn.addEventListener('click', () => {
-            window.open(`/vehicles/${vehicle._id}`, '_blank');
-          });
-        }
-      });
-
-      // Bind hover and select handlers
-      el.addEventListener('mouseenter', () => onPinHover && onPinHover(vehicle._id));
-      el.addEventListener('mouseleave', () => onPinHover && onPinHover(null));
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onPinClick && onPinClick(vehicle._id);
-      });
 
       // Initialize the Mapbox marker and add it to the map
       const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
@@ -161,9 +160,30 @@ const VehicleMap = ({
         .setPopup(popup)
         .addTo(map);
 
+      // Bind routing redirection to detail pages when clicking popup CTA card
+      popup.on('open', () => {
+        const card = document.getElementById(`popup-card-${vehicle._id}`);
+        if (card) {
+          card.addEventListener('click', () => {
+            window.open(`/vehicles/${vehicle._id}`, '_blank');
+          });
+        }
+      });
+
+      // Bind hover and select handlers
+      el.addEventListener('mouseenter', () => onPinHoverRef.current && onPinHoverRef.current(vehicle._id));
+      el.addEventListener('mouseleave', () => onPinHoverRef.current && onPinHoverRef.current(null));
+      el.addEventListener('click', (e) => {
+        e.stopPropagation(); // Stop click from propagating to map canvas (which auto-closes popups)
+        onPinClickRef.current && onPinClickRef.current(vehicle._id);
+        
+        // Toggle the map popup display manually
+        marker.togglePopup();
+      });
+
       markersRef.current[vehicle._id] = marker;
     });
-  }, [vehicles, onPinHover, onPinClick]);
+  }, [map, vehicles]);
 
   // Synchronize hover state updates from list items to the map pins
   useEffect(() => {
@@ -173,12 +193,26 @@ const VehicleMap = ({
 
       const isHovered = hoveredVehicleId === vehicle._id;
       if (isHovered) {
-        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center transition-all whitespace-nowrap cursor-pointer bg-gray-900 text-white border-gray-900 scale-110 z-50';
+        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center whitespace-nowrap cursor-pointer bg-gray-900 text-white border-gray-900 z-50';
       } else {
-        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center transition-all whitespace-nowrap cursor-pointer bg-white text-gray-900 border-gray-300';
+        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center whitespace-nowrap cursor-pointer bg-white text-gray-900 border-gray-300';
       }
     });
   }, [hoveredVehicleId, vehicles]);
+
+  if (mapError) {
+    return (
+      <div className="w-full h-full rounded-2xl flex flex-col items-center justify-center bg-gray-50 border border-gray-200 p-6 text-center shadow-inner">
+        <MapPin className="h-10 w-10 text-red-500 mb-3" />
+        <h3 className="text-base font-bold text-gray-900 mb-1">Map Loading Failed</h3>
+        <p className="text-xs text-gray-500 max-w-xs mb-4">{mapError}</p>
+        <div className="text-[10px] text-left bg-gray-900 text-gray-400 font-mono p-3 rounded-lg w-full max-w-sm overflow-x-auto shadow-sm">
+          # Configure Mapbox token in client/.env:<br/>
+          VITE_MAPBOX_TOKEN=your_mapbox_token_here
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border border-gray-200 relative">

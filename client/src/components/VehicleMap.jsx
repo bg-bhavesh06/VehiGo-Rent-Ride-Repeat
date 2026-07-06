@@ -113,7 +113,7 @@ const VehicleMap = ({
       // Custom HTML popup window containing vehicle details card
       const popup = new mapboxgl.Popup({ offset: [0, -15], closeButton: false })
         .setHTML(`
-          <div class="w-48 overflow-hidden rounded-xl bg-white border-0">
+          <div id="popup-card-${vehicle._id}" class="w-48 overflow-hidden rounded-xl bg-white border border-gray-100 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300">
             <div class="h-24 bg-gray-200 relative">
               ${vehicle.images && vehicle.images[0] 
                 ? `<img src="${vehicle.images[0]}" alt="${vehicle.name}" class="w-full h-full object-cover" />`
@@ -124,23 +124,27 @@ const VehicleMap = ({
               </div>
             </div>
             <div class="p-3">
-              <h4 class="font-bold text-sm text-gray-900 truncate mb-1">${vehicle.name}</h4>
+              <h4 class="font-bold text-sm text-gray-900 truncate mb-0.5">${vehicle.name}</h4>
               <p class="text-xs text-gray-500 mb-2 truncate">${vehicle.brand} • ${vehicle.type}</p>
-              <button 
-                id="btn-popup-${vehicle._id}"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-lg text-xs font-bold transition text-center block cursor-pointer"
-              >
-                View Details
-              </button>
+              <div class="text-[10px] text-blue-600 font-bold flex items-center gap-1">
+                <span>View Details</span>
+                <span>→</span>
+              </div>
             </div>
           </div>
         `);
 
-      // Bind routing redirection to detail pages when clicking popup CTA
+      // Initialize the Mapbox marker and add it to the map
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([vehicle.longitude, vehicle.latitude])
+        .setPopup(popup)
+        .addTo(map);
+
+      // Bind routing redirection to detail pages when clicking popup CTA card
       popup.on('open', () => {
-        const btn = document.getElementById(`btn-popup-${vehicle._id}`);
-        if (btn) {
-          btn.addEventListener('click', () => {
+        const card = document.getElementById(`popup-card-${vehicle._id}`);
+        if (card) {
+          card.addEventListener('click', () => {
             window.open(`/vehicles/${vehicle._id}`, '_blank');
           });
         }
@@ -149,16 +153,13 @@ const VehicleMap = ({
       // Bind hover and select handlers
       el.addEventListener('mouseenter', () => onPinHover && onPinHover(vehicle._id));
       el.addEventListener('mouseleave', () => onPinHover && onPinHover(null));
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
+      el.addEventListener('click', () => {
         onPinClick && onPinClick(vehicle._id);
+        // Explicitly toggle map popup display
+        if (!marker.getPopup().isOpen()) {
+          marker.togglePopup();
+        }
       });
-
-      // Initialize the Mapbox marker and add it to the map
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([vehicle.longitude, vehicle.latitude])
-        .setPopup(popup)
-        .addTo(map);
 
       markersRef.current[vehicle._id] = marker;
     });

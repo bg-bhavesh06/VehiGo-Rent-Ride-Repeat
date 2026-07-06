@@ -1,20 +1,20 @@
-const User = require('../models/User');
-const Owner = require('../models/Owner');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const cloudinary = require('../config/cloudinary');
-const OTP = require('../models/OTP');
-const sendEmail = require('../utils/sendEmail');
+const User = require("../models/User");
+const Owner = require("../models/Owner");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const cloudinary = require("../config/cloudinary");
+const OTP = require("../models/OTP");
+const sendEmail = require("../utils/sendEmail");
 
 // Helper to upload buffer to Cloudinary
 const uploadToCloudinary = (buffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'bike_rental/avatars' },
+      { folder: "bike_rental/avatars" },
       (error, result) => {
         if (result) resolve(result.secure_url);
         else reject(error);
-      }
+      },
     );
     stream.end(buffer);
   });
@@ -23,7 +23,7 @@ const uploadToCloudinary = (buffer) => {
 // Generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
+    expiresIn: "15d",
   });
 };
 
@@ -34,13 +34,15 @@ const registerUser = async (req, res) => {
   const { name, email, password, role, contactNumber } = req.body;
 
   try {
-    const Model = role === 'Owner' ? Owner : User;
+    const Model = role === "Owner" ? Owner : User;
 
     const userExists = await User.findOne({ email });
     const ownerExists = await Owner.findOne({ email });
 
     if (userExists || ownerExists) {
-      return res.status(400).json({ message: 'Account already exists with this email' });
+      return res
+        .status(400)
+        .json({ message: "Account already exists with this email" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -51,7 +53,7 @@ const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       contactNumber,
-      role: role || 'User',
+      role: role || "User",
     });
 
     if (user) {
@@ -63,7 +65,7 @@ const registerUser = async (req, res) => {
         token: generateToken(user._id),
       });
     } else {
-      res.status(400).json({ message: 'Invalid user data' });
+      res.status(400).json({ message: "Invalid user data" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -77,14 +79,14 @@ const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    let user = await User.findOne({ 
-      $or: [{ email: email }, { contactNumber: email }] 
+    let user = await User.findOne({
+      $or: [{ email: email }, { contactNumber: email }],
     });
     let isOwner = false;
-    
+
     if (!user) {
-      user = await Owner.findOne({ 
-        $or: [{ email: email }, { contactNumber: email }] 
+      user = await Owner.findOne({
+        $or: [{ email: email }, { contactNumber: email }],
       });
       isOwner = !!user;
     }
@@ -99,7 +101,7 @@ const loginUser = async (req, res) => {
         token: generateToken(user._id),
       });
     } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+      res.status(401).json({ message: "Invalid email or password" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -111,15 +113,15 @@ const loginUser = async (req, res) => {
 // @access  Private
 const getUserProfile = async (req, res) => {
   try {
-    let user = await User.findById(req.user._id).select('-password');
+    let user = await User.findById(req.user._id).select("-password");
     if (!user) {
-      user = await Owner.findById(req.user._id).select('-password');
+      user = await Owner.findById(req.user._id).select("-password");
     }
 
     if (user) {
       res.json(user);
     } else {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: "User not found" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -140,18 +142,20 @@ const updateUserProfile = async (req, res) => {
       if (req.body && req.body.name) {
         user.name = req.body.name;
       }
-      
+
       if (req.file) {
         try {
           user.avatar = await uploadToCloudinary(req.file.buffer);
         } catch (err) {
-          console.error('Cloudinary upload error:', err);
-          return res.status(500).json({ message: 'Error uploading image: ' + err.message });
+          console.error("Cloudinary upload error:", err);
+          return res
+            .status(500)
+            .json({ message: "Error uploading image: " + err.message });
         }
       } else if (req.body.avatar) {
         user.avatar = req.body.avatar;
       }
-      
+
       if (req.body.password) {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(req.body.password, salt);
@@ -168,7 +172,7 @@ const updateUserProfile = async (req, res) => {
         token: generateToken(updatedUser._id),
       });
     } else {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: "User not found" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -188,7 +192,9 @@ const forgotPassword = async (req, res) => {
     }
 
     if (!user) {
-      return res.status(404).json({ message: 'No account found with this email' });
+      return res
+        .status(404)
+        .json({ message: "No account found with this email" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -196,22 +202,26 @@ const forgotPassword = async (req, res) => {
     await OTP.findOneAndUpdate(
       { email },
       { otp, createdAt: Date.now() },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     const message = `You are receiving this email because you (or someone else) requested a password reset. \n\nYour OTP is: ${otp}\n\nThis OTP is valid for 10 minutes.`;
-    
+
     try {
       await sendEmail({
         email: user.email,
-        subject: 'Vehigo Password Reset OTP',
-        message
+        subject: "Vehigo Password Reset OTP",
+        message,
       });
-      res.status(200).json({ message: 'OTP sent to email' });
+      res.status(200).json({ message: "OTP sent to email" });
     } catch (err) {
       console.error(err);
       await OTP.findOneAndDelete({ email });
-      return res.status(500).json({ message: 'Email could not be sent. Check email configuration.' });
+      return res
+        .status(500)
+        .json({
+          message: "Email could not be sent. Check email configuration.",
+        });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -226,9 +236,9 @@ const resetPassword = async (req, res) => {
 
   try {
     const otpRecord = await OTP.findOne({ email, otp });
-    
+
     if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
     let user = await User.findOne({ email });
@@ -237,7 +247,7 @@ const resetPassword = async (req, res) => {
     }
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -246,7 +256,7 @@ const resetPassword = async (req, res) => {
 
     await OTP.findOneAndDelete({ email });
 
-    res.status(200).json({ message: 'Password reset successful' });
+    res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

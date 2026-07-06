@@ -66,13 +66,13 @@ const VehicleSpecs = ({ vehicle, onStartChat, onGetDirection, geoLoading }) => {
 
       {/* Chat & Direction Buttons */}
       <div className="mb-8 border-t border-gray-100 pt-6 flex flex-col sm:flex-row gap-4">
-        {/* <button 
+        <button
           onClick={onStartChat}
           className="flex items-center justify-center gap-2 flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3.5 rounded-xl font-bold transition shadow-md"
         >
           <MessageCircle className="h-5 w-5" />
           Chat with Owner
-        </button> */}
+        </button>
         <button
           onClick={onGetDirection}
           disabled={geoLoading}

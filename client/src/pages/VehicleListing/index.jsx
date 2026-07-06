@@ -177,7 +177,7 @@ const VehicleListing = () => {
       <div className="flex-1 h-full flex flex-col lg:flex-row overflow-hidden">
         {/* Vehicle List */}
         <div
-          className={`w-full ${hasSearchedLocation ? "lg:w-[60%] border-r border-gray-200" : "w-full"} h-full overflow-y-auto custom-scrollbar flex flex-col bg-white`}
+          className={`w-full ${hasSearchedLocation ? "lg:w-[50%] border-r border-gray-200" : "w-full"} h-full overflow-y-auto custom-scrollbar flex flex-col bg-white`}
         >
           <div className="p-5 flex-1">
             <div className="mb-4 flex items-center justify-between">
@@ -254,7 +254,7 @@ const VehicleListing = () => {
 
         {/* Map */}
         {hasSearchedLocation && (
-          <div className="hidden lg:block w-[40%] h-full p-4 bg-gray-50">
+          <div className="hidden lg:block w-[50%] h-full p-4 bg-gray-50">
             <VehicleMap
               vehicles={vehicles}
               center={mapCenter}

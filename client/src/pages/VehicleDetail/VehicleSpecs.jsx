@@ -34,7 +34,7 @@ const VehicleSpecs = ({ vehicle, onStartChat, onGetDirection, geoLoading }) => {
           </div>
         </div>
         <div className="sm:text-right">
-          <div className="flex items-baseline gap-1 sm:justify-end">
+          <div className="flex items-baseline gap-1 sm:justify-end whitespace-nowrap">
             <span className="text-3xl font-black text-blue-600">₹{vehicle.pricePerHour}</span>
             <span className="text-gray-500 text-sm">/ hour</span>
           </div>

@@ -86,6 +86,15 @@ const VehicleMap = ({
     }
   }, [map, userLocation]);
 
+  // Create mutable refs for the callbacks to prevent re-triggering marker creation
+  const onPinHoverRef = useRef(onPinHover);
+  const onPinClickRef = useRef(onPinClick);
+
+  useEffect(() => {
+    onPinHoverRef.current = onPinHover;
+    onPinClickRef.current = onPinClick;
+  }, [onPinHover, onPinClick]);
+
   // Handle building and rendering dynamic price markers for listings
   useEffect(() => {
     if (!map) return;
@@ -151,19 +160,19 @@ const VehicleMap = ({
       });
 
       // Bind hover and select handlers
-      el.addEventListener('mouseenter', () => onPinHover && onPinHover(vehicle._id));
-      el.addEventListener('mouseleave', () => onPinHover && onPinHover(null));
-      el.addEventListener('click', () => {
-        onPinClick && onPinClick(vehicle._id);
-        // Explicitly toggle map popup display
-        if (!marker.getPopup().isOpen()) {
-          marker.togglePopup();
-        }
+      el.addEventListener('mouseenter', () => onPinHoverRef.current && onPinHoverRef.current(vehicle._id));
+      el.addEventListener('mouseleave', () => onPinHoverRef.current && onPinHoverRef.current(null));
+      el.addEventListener('click', (e) => {
+        e.stopPropagation(); // Stop click from propagating to map canvas (which auto-closes popups)
+        onPinClickRef.current && onPinClickRef.current(vehicle._id);
+        
+        // Toggle the map popup display manually
+        marker.togglePopup();
       });
 
       markersRef.current[vehicle._id] = marker;
     });
-  }, [map, vehicles, onPinHover, onPinClick]);
+  }, [map, vehicles]);
 
   // Synchronize hover state updates from list items to the map pins
   useEffect(() => {

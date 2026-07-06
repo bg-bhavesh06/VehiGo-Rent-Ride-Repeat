@@ -4,6 +4,8 @@ const cors = require("cors");
 const path = require("path");
 const connectDB = require("./config/db");
 
+// this is chekcing the branch works correctly or not
+
 // Connect Database called
 connectDB();
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 
 /**
@@ -16,7 +16,7 @@ const VehicleMap = ({
   onPinClick 
 }) => {
   const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
+  const [map, setMap] = useState(null);
   const markersRef = useRef({});
   const userMarkerRef = useRef(null);
 
@@ -32,7 +32,7 @@ const VehicleMap = ({
     const initialLat = center ? center[0] : 20.5937;
     const initialZoom = center ? 12 : 5;
 
-    const map = new mapboxgl.Map({
+    const mapInstance = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v11',
       center: [initialLng, initialLat],
@@ -40,19 +40,18 @@ const VehicleMap = ({
     });
 
     // Add navigation controls (zoom buttons) in the bottom right corner
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+    mapInstance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
-    mapRef.current = map;
+    setMap(mapInstance);
 
     // Clean up map container resource on unmount
     return () => {
-      map.remove();
+      mapInstance.remove();
     };
   }, []);
 
   // Update map camera center when search location changes
   useEffect(() => {
-    const map = mapRef.current;
     if (!map || !center) return;
 
     const [lat, lng] = center;
@@ -63,11 +62,10 @@ const VehicleMap = ({
         essential: true
       });
     }
-  }, [center]);
+  }, [map, center]);
 
   // Update user current position marker dot on the map
   useEffect(() => {
-    const map = mapRef.current;
     if (!map) return;
 
     // Remove existing user marker if user disables location search
@@ -86,11 +84,10 @@ const VehicleMap = ({
 
       userMarkerRef.current = userMarker;
     }
-  }, [userLocation]);
+  }, [map, userLocation]);
 
   // Handle building and rendering dynamic price markers for listings
   useEffect(() => {
-    const map = mapRef.current;
     if (!map) return;
 
     // Clear existing vehicle markers before re-rendering
@@ -105,10 +102,11 @@ const VehicleMap = ({
       // Create a custom HTML element for the marker pin
       const el = document.createElement('div');
       el.id = `marker-${vehicle._id}`;
-      el.className = `px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all duration-200 whitespace-nowrap cursor-pointer ${
+      // Removed transitions and scaling animations as per request to keep it simple and static
+      el.className = `px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center whitespace-nowrap cursor-pointer ${
         isHovered ? 'bg-gray-900 text-white border-gray-900 z-50' : 'bg-white text-gray-900 border-gray-300'
       }`;
-      el.style.transform = isHovered ? 'translate(-50%, -100%) scale(1.1)' : 'translate(-50%, -100%) scale(1)';
+      el.style.transform = 'translate(-50%, -100%)';
       el.style.width = 'max-content';
       el.innerHTML = `₹${vehicle.pricePerHour}`;
 
@@ -164,7 +162,7 @@ const VehicleMap = ({
 
       markersRef.current[vehicle._id] = marker;
     });
-  }, [vehicles, onPinHover, onPinClick]);
+  }, [map, vehicles, onPinHover, onPinClick]);
 
   // Synchronize hover state updates from list items to the map pins
   useEffect(() => {
@@ -174,11 +172,9 @@ const VehicleMap = ({
 
       const isHovered = hoveredVehicleId === vehicle._id;
       if (isHovered) {
-        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all duration-200 whitespace-nowrap cursor-pointer bg-gray-900 text-white border-gray-900 z-50';
-        el.style.transform = 'translate(-50%, -100%) scale(1.1)';
+        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center whitespace-nowrap cursor-pointer bg-gray-900 text-white border-gray-900 z-50';
       } else {
-        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border inline-flex items-center justify-center transition-all duration-200 whitespace-nowrap cursor-pointer bg-white text-gray-900 border-gray-300';
-        el.style.transform = 'translate(-50%, -100%) scale(1)';
+        el.className = 'px-2 py-1 rounded-full font-bold text-xs shadow-md border flex items-center justify-center whitespace-nowrap cursor-pointer bg-white text-gray-900 border-gray-300';
       }
     });
   }, [hoveredVehicleId, vehicles]);

@@ -29,6 +29,19 @@ const VehicleListing = () => {
   // State for hover sync
   const [hoveredVehicleId, setHoveredVehicleId] = useState(null);
 
+  // Scroll card into view when hovered or clicked from the map
+  useEffect(() => {
+    if (hoveredVehicleId) {
+      const card = document.getElementById(`vehicle-card-${hoveredVehicleId}`);
+      if (card) {
+        card.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }
+    }
+  }, [hoveredVehicleId]);
+
   // Parse URL parameters for initial filters
   const queryParams = new URLSearchParams(location.search);
   const initialLat = queryParams.get('lat');

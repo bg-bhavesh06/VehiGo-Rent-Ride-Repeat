@@ -28,6 +28,7 @@ const VehicleCard = ({ vehicle, isHovered, onHover }) => {
 
   return (
     <div 
+      id={`vehicle-card-${vehicle._id}`}
       onClick={handleCardClick}
       onMouseEnter={() => onHover && onHover(vehicle._id)}
       onMouseLeave={() => onHover && onHover(null)}

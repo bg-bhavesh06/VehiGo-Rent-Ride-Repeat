@@ -91,12 +91,9 @@ const addVehicle = async (req, res) => {
   }
 };
 
-// @desc    Get all vehicles (with filters)
-// @route   GET /api/vehicles
-// @access  Public
 const getVehicles = async (req, res) => {
   try {
-    const { type, location, lat, lon, brand, maxPrice, minPrice } = req.query;
+    const { type, location, lat, lon } = req.query;
     
     let query = {};
 
@@ -115,12 +112,6 @@ const getVehicles = async (req, res) => {
     }
 
     if (type) query.type = new RegExp(type, 'i');
-    if (brand) query.brand = new RegExp(brand, 'i');
-    if (minPrice || maxPrice) {
-      query.pricePerHour = {};
-      if (minPrice) query.pricePerHour.$gte = Number(minPrice);
-      if (maxPrice) query.pricePerHour.$lte = Number(maxPrice);
-    }
 
     const vehicles = await Vehicle.find(query).populate('owner', 'name email').lean();
     
